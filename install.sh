@@ -1,11 +1,11 @@
 #!/bin/bash
 #
 # ============================================================
-# ASTERISK ADMIN - SCRIPT DE INSTALAÇÃO AUTOMATIZADA
+# TRUNKFLOW - SCRIPT DE INSTALAÇÃO AUTOMATIZADA
 # ============================================================
 # Versão: 1.0.0
 # Compatível: Debian 12 / Ubuntu 22.04+
-# Autor: Asterisk Admin Team
+# Autor: TrunkFlow Team
 # ============================================================
 
 set -e
@@ -18,7 +18,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Variáveis de configuração
-INSTALL_DIR="/opt/asterisk-admin"
+INSTALL_DIR="/opt/trunkflow"
 DB_NAME="asterisk_admin"
 DB_USER="asterisk"
 DB_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 16)
@@ -350,7 +350,7 @@ CDRSQLEOF
 
 # Instalar aplicação
 install_application() {
-    log_info "Instalando aplicação Asterisk Admin..."
+    log_info "Instalando aplicação TrunkFlow..."
     
     # Criar diretório
     mkdir -p $INSTALL_DIR
@@ -491,7 +491,7 @@ VITEEOF
 setup_nginx() {
     log_info "Configurando Nginx..."
     
-    cat > /etc/nginx/sites-available/asterisk-admin << 'NGINXEOF'
+    cat > /etc/nginx/sites-available/trunkflow << 'NGINXEOF'
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -499,7 +499,7 @@ server {
 
     # Frontend
     location / {
-        root /opt/asterisk-admin/frontend/dist;
+        root /opt/trunkflow/frontend/dist;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
@@ -519,14 +519,14 @@ server {
     }
 
     # Logs
-    access_log /var/log/nginx/asterisk-admin.access.log;
-    error_log /var/log/nginx/asterisk-admin.error.log;
+    access_log /var/log/nginx/trunkflow.access.log;
+    error_log /var/log/nginx/trunkflow.error.log;
 }
 NGINXEOF
 
-    # Remover site default e habilitar asterisk-admin
+    # Remover site default e habilitar trunkflow
     rm -f /etc/nginx/sites-enabled/default
-    ln -sf /etc/nginx/sites-available/asterisk-admin /etc/nginx/sites-enabled/
+    ln -sf /etc/nginx/sites-available/trunkflow /etc/nginx/sites-enabled/
     
     # Testar e reiniciar
     nginx -t
@@ -539,9 +539,9 @@ NGINXEOF
 setup_systemd() {
     log_info "Criando serviço systemd..."
     
-    cat > /etc/systemd/system/asterisk-admin.service << 'SYSTEMDEOF'
+    cat > /etc/systemd/system/trunkflow.service << 'SYSTEMDEOF'
 [Unit]
-Description=Asterisk Admin API
+Description=TrunkFlow API
 After=network.target postgresql.service asterisk.service
 Wants=postgresql.service
 
@@ -549,9 +549,9 @@ Wants=postgresql.service
 Type=simple
 User=root
 Group=root
-WorkingDirectory=/opt/asterisk-admin/backend
-Environment="PATH=/opt/asterisk-admin/backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/opt/asterisk-admin/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+WorkingDirectory=/opt/trunkflow/backend
+Environment="PATH=/opt/trunkflow/backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/opt/trunkflow/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 
@@ -560,8 +560,8 @@ WantedBy=multi-user.target
 SYSTEMDEOF
 
     systemctl daemon-reload
-    systemctl enable asterisk-admin
-    systemctl start asterisk-admin
+    systemctl enable trunkflow
+    systemctl start trunkflow
     
     log_success "Serviço systemd criado"
 }
@@ -611,13 +611,13 @@ show_final_info() {
     echo -e "${BLUE}=== COMANDOS ÚTEIS ===${NC}"
     echo ""
     echo "  Verificar status:"
-    echo "    systemctl status asterisk-admin"
+    echo "    systemctl status trunkflow"
     echo "    systemctl status asterisk"
     echo "    systemctl status nginx"
     echo "    systemctl status postgresql"
     echo ""
     echo "  Ver logs:"
-    echo "    journalctl -u asterisk-admin -f"
+    echo "    journalctl -u trunkflow -f"
     echo ""
     echo "  Asterisk CLI:"
     echo "    asterisk -rvvv"
@@ -632,9 +632,9 @@ show_final_info() {
     echo ""
     
     # Salvar informações em arquivo
-    cat > /root/asterisk-admin-install.info << INFOEOF
+    cat > /root/trunkflow-install.info << INFOEOF
 ===========================================
-ASTERISK ADMIN - INFORMAÇÕES DE INSTALAÇÃO
+TRUNKFLOW - INFORMAÇÕES DE INSTALAÇÃO
 ===========================================
 Data: $(date)
 Versão: 1.0.0
@@ -655,7 +655,7 @@ Diretório: $INSTALL_DIR
 ===========================================
 INFOEOF
     
-    echo -e "${GREEN}Informações salvas em: /root/asterisk-admin-install.info${NC}"
+    echo -e "${GREEN}Informações salvas em: /root/trunkflow-install.info${NC}"
     echo ""
 }
 

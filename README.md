@@ -1,4 +1,8 @@
-# 🚀 Asterisk Admin - VoIP Gateway Management
+# 🚀 TrunkFlow - VoIP Gateway Management
+
+<p align="center">
+  <img src="docs/images/logo.png" alt="TrunkFlow Logo" width="300">
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
@@ -8,9 +12,11 @@
   <img src="https://img.shields.io/badge/react-18+-61DAFB.svg" alt="React">
 </p>
 
-Sistema completo de gerenciamento VoIP para centrais Asterisk. Gerencie clientes, DIDs, provedores, gateways, rotas, ramais e tarifas através de uma interface web moderna.
+<p align="center">
+  <strong>Sistema completo de gerenciamento VoIP para centrais Asterisk</strong>
+</p>
 
-![Dashboard](docs/images/dashboard.png)
+---
 
 ## ✨ Funcionalidades
 
@@ -23,7 +29,7 @@ Sistema completo de gerenciamento VoIP para centrais Asterisk. Gerencie clientes
 - 📱 **Ramais** - Extensões para clientes
 - 💰 **Tarifas** - Precificação com margem
 - 📈 **Relatórios** - CDR e análises
-- 🔄 **Sync Automático** - Integração com Asterisk
+- 🔄 **Sync Automático** - Integração direta com Asterisk
 
 ## 🏗️ Arquitetura
 
@@ -48,27 +54,11 @@ Sistema completo de gerenciamento VoIP para centrais Asterisk. Gerencie clientes
 
 ## 🛠️ Stack Tecnológico
 
-### Backend
-- **Python 3.11+**
-- **FastAPI** - Framework web async
-- **SQLAlchemy 2.0** - ORM async
-- **PostgreSQL** - Banco de dados
-- **Pydantic** - Validação de dados
-- **JWT** - Autenticação
-
-### Frontend
-- **React 18** - UI Framework
-- **Vite** - Build tool
-- **TailwindCSS** - Estilização
-- **React Query** - State management
-- **Axios** - HTTP client
-- **Lucide** - Ícones
-
-### Infraestrutura
-- **Debian 12 / Ubuntu 24**
-- **Nginx** - Proxy reverso
-- **Asterisk 20** - PBX (PJSIP)
-- **Systemd** - Serviços
+| Camada | Tecnologias |
+|--------|-------------|
+| **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0, PostgreSQL |
+| **Frontend** | React 18, Vite, TailwindCSS, React Query |
+| **Infra** | Debian 12, Nginx, Asterisk 20, Systemd |
 
 ## 📋 Requisitos
 
@@ -81,209 +71,78 @@ Sistema completo de gerenciamento VoIP para centrais Asterisk. Gerencie clientes
 
 ## 🚀 Instalação Rápida
 
-### Opção 1: Script Automatizado (Recomendado)
-
 ```bash
-# Download do repositório
-git clone https://github.com/SEU_USUARIO/Asterisk-VoipGateway.git
+# Clone o repositório
+git clone https://github.com/VictorWiik/Asterisk-VoipGateway.git
 cd Asterisk-VoipGateway
 
-# Executar instalador
+# Execute o instalador
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-### Opção 2: Instalação Manual
-
-```bash
-# 1. Instalar dependências
-apt-get update
-apt-get install -y postgresql nginx python3 python3-pip python3-venv nodejs npm
-
-# 2. Criar banco de dados
-sudo -u postgres createuser asterisk
-sudo -u postgres createdb -O asterisk asterisk_admin
-
-# 3. Configurar backend
-cd /opt/asterisk-admin/backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# 4. Configurar frontend
-cd /opt/asterisk-admin/frontend
-npm install
-npm run build
-
-# 5. Iniciar serviços
-systemctl start asterisk-admin
-systemctl start nginx
-```
+O script oferece instalação completa (PostgreSQL, Nginx, Asterisk) ou apenas a aplicação.
 
 ## 📁 Estrutura do Projeto
 
 ```
-asterisk-admin/
-├── backend/
-│   ├── app/
-│   │   ├── api/           # Endpoints REST
-│   │   ├── core/          # Config, DB, Security
-│   │   ├── models/        # SQLAlchemy models
-│   │   ├── schemas/       # Pydantic schemas
-│   │   └── services/      # Asterisk service
-│   ├── requirements.txt
-│   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── pages/         # Páginas
-│   │   ├── services/      # API client
-│   │   └── styles/        # CSS
-│   └── package.json
-├── database/
-│   ├── schema.sql         # Schema principal
-│   └── migration_*.sql    # Migrações
-├── docs/
-│   └── images/
-├── install.sh             # Instalador
+trunkflow/
+├── backend/           # API FastAPI
+├── frontend/          # React SPA
+├── database/          # Schema e migrações
+├── docs/              # Documentação
+├── install.sh         # Instalador automático
 └── README.md
-```
-
-## ⚙️ Configuração
-
-### Backend (.env)
-
-```env
-DATABASE_URL=postgresql+asyncpg://asterisk:senha@localhost/asterisk_admin
-SECRET_KEY=sua-chave-secreta
-ASTERISK_CONFIG_PATH=/etc/asterisk
-```
-
-### Nginx
-
-```nginx
-server {
-    listen 80;
-    
-    location / {
-        root /opt/asterisk-admin/frontend/dist;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    location /api {
-        proxy_pass http://127.0.0.1:8000;
-    }
-}
 ```
 
 ## 📡 Integração Asterisk
 
-O sistema gera automaticamente os seguintes arquivos:
+O sistema gera automaticamente:
 
-| Arquivo | Módulo | Descrição |
-|---------|--------|-----------|
-| `pjsip_gateways.conf` | Gateways | Endpoints SIP |
-| `pjsip_customer_trunks.conf` | Clientes | Trunks de clientes |
-| `pjsip_extensions.conf` | Ramais | Extensões |
-| `extensions_routes.conf` | Rotas | Dialplan saída |
-| `extensions_dids.conf` | DIDs | Dialplan entrada |
+| Arquivo | Descrição |
+|---------|-----------|
+| `pjsip_gateways.conf` | Endpoints SIP dos gateways |
+| `pjsip_customer_trunks.conf` | Trunks de clientes |
+| `pjsip_extensions.conf` | Ramais |
+| `extensions_routes.conf` | Dialplan de saída |
+| `extensions_dids.conf` | Dialplan de entrada |
 
 ## 🔧 Comandos Úteis
 
 ```bash
 # Status dos serviços
-systemctl status asterisk-admin
+systemctl status trunkflow
 systemctl status asterisk
 
-# Logs do backend
-journalctl -u asterisk-admin -f
+# Logs
+journalctl -u trunkflow -f
 
 # Asterisk CLI
-asterisk -rvvv
-
-# PJSIP endpoints
 asterisk -rx "pjsip show endpoints"
-
-# Reload configs
-asterisk -rx "pjsip reload"
-asterisk -rx "dialplan reload"
 ```
 
 ## 📊 Capacidade Estimada
 
-| Servidor | Canais Simultâneos | CPS |
-|----------|-------------------|-----|
+| Servidor | Canais | CPS |
+|----------|--------|-----|
 | 2 vCPU / 2GB | 60-80 | 10-15 |
 | 4 vCPU / 8GB | 150-180 | 25-30 |
 | 8 vCPU / 16GB | 300-400 | 50-60 |
 
-*Baseado em codec G711 (alaw/ulaw) sem gravação*
+*Codec G711 (alaw/ulaw) sem gravação*
 
-## 🔐 Segurança
+## 📄 Documentação
 
-- Senhas com hash bcrypt
-- Autenticação JWT
-- Validação com Pydantic
-- Queries parametrizadas
-- CORS configurado
-
-### Recomendações
-
-- Configurar HTTPS/SSL
-- Usar firewall (iptables/ufw)
-- Habilitar fail2ban
-- Backups regulares
-
-## 🐛 Troubleshooting
-
-| Problema | Solução |
-|----------|---------|
-| 500 Internal Server Error | `journalctl -u asterisk-admin -n 50` |
-| Tela branca | Console do browser (F12) |
-| Gateway não aparece | Verificar `pjsip_gateways.conf` |
-| Ramal não registra | Verificar senha e reload pjsip |
-
-## 📄 API Endpoints
-
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/api/v1/auth/login` | Autenticação |
-| GET | `/api/v1/dashboard/stats` | Estatísticas |
-| GET/POST | `/api/v1/customers/` | Clientes |
-| GET/POST | `/api/v1/dids/` | DIDs |
-| GET/POST | `/api/v1/gateways/` | Gateways |
-| GET/POST | `/api/v1/routes/` | Rotas |
-| GET/POST | `/api/v1/extensions/` | Ramais |
-| GET | `/api/v1/reports/cdr` | Relatório CDR |
-
-## 📝 Changelog
-
-### v1.0.0 (2026-01-11)
-- Release inicial
-- Dashboard com métricas
-- CRUD completo de entidades
-- Sincronização automática com Asterisk
-- Relatórios CDR e DIDs
-
-## 🤝 Contribuição
-
-1. Fork o projeto
-2. Crie sua branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+- [Guia de Instalação](docs/AsteriskAdmin_Guia_Instalacao.pdf)
+- [Documentação Técnica](docs/AsteriskAdmin_Documentacao_Tecnica.pdf)
 
 ## 📜 Licença
 
-Este projeto é proprietário. Veja o arquivo [LICENSE](LICENSE) para detalhes.
-
-## 📧 Suporte
-
-- 📫 Email: suporte@exemplo.com
-- 🐛 Issues: [GitHub Issues](https://github.com/SEU_USUARIO/Asterisk-VoipGateway/issues)
+Este projeto é proprietário. Veja [LICENSE](LICENSE) para detalhes.
 
 ---
 
 <p align="center">
-  Feito com ❤️ para a comunidade VoIP
+  <strong>TrunkFlow</strong> - VoIP Management<br>
+  Feito com ❤️ para profissionais de telecomunicações
 </p>

@@ -9,17 +9,6 @@ import {
   DollarSign,
   Activity
 } from 'lucide-react'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar
-} from 'recharts'
 import { dashboard } from '../services/api'
 
 function StatCard({ title, value, icon: Icon, trend, color = 'primary' }) {
@@ -58,16 +47,6 @@ export default function Dashboard() {
     queryFn: () => dashboard.stats().then(res => res.data),
   })
 
-  const { data: callsByHour } = useQuery({
-    queryKey: ['calls-by-hour'],
-    queryFn: () => dashboard.callsByHour(1).then(res => res.data),
-  })
-
-  const { data: topCustomers } = useQuery({
-    queryKey: ['top-customers'],
-    queryFn: () => dashboard.topCustomers(30, 5).then(res => res.data),
-  })
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -76,111 +55,59 @@ export default function Dashboard() {
     )
   }
 
+  const safeNumber = (val) => {
+    const num = Number(val)
+    return isNaN(num) ? 0 : num
+  }
+
+  const safeStats = {
+    active_customers: safeNumber(stats?.active_customers),
+    allocated_dids: safeNumber(stats?.allocated_dids),
+    total_calls_today: safeNumber(stats?.total_calls_today),
+    total_minutes_today: safeNumber(stats?.total_minutes_today),
+    total_dids: safeNumber(stats?.total_dids),
+    available_dids: safeNumber(stats?.available_dids),
+    total_providers: safeNumber(stats?.total_providers),
+    total_customers: safeNumber(stats?.total_customers),
+    revenue_today: safeNumber(stats?.revenue_today),
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-400 mt-1">Visão geral do sistema</p>
+        <p className="text-gray-400 mt-1">Visao geral do sistema TrunkFlow</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Clientes Ativos"
-          value={stats?.active_customers || 0}
-          icon={Users}
-          color="primary"
-        />
-        <StatCard
-          title="DIDs Alocados"
-          value={stats?.allocated_dids || 0}
-          icon={Phone}
-          color="emerald"
-        />
-        <StatCard
-          title="Chamadas Hoje"
-          value={stats?.total_calls_today || 0}
-          icon={PhoneCall}
-          color="amber"
-        />
-        <StatCard
-          title="Minutos Hoje"
-          value={stats?.total_minutes_today || 0}
-          icon={Clock}
-          color="violet"
-        />
+        <StatCard title="Clientes Ativos" value={safeStats.active_customers} icon={Users} color="primary" />
+        <StatCard title="DIDs Alocados" value={safeStats.allocated_dids} icon={Phone} color="emerald" />
+        <StatCard title="Chamadas Hoje" value={safeStats.total_calls_today} icon={PhoneCall} color="amber" />
+        <StatCard title="Minutos Hoje" value={safeStats.total_minutes_today} icon={Clock} color="violet" />
       </div>
 
-      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Calls by Hour */}
         <div className="card">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary-500" />
             Chamadas por Hora
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={callsByHour || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis 
-                  dataKey="hour" 
-                  stroke="#64748b"
-                  tickFormatter={(value) => value ? new Date(value).getHours() + 'h' : ''}
-                />
-                <YAxis stroke="#64748b" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1a2332',
-                    border: '1px solid #1e293b',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="total_calls"
-                  stroke="#0ea5e9"
-                  strokeWidth={2}
-                  dot={{ fill: '#0ea5e9' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="h-64 flex items-center justify-center text-gray-500">
+            Nenhuma chamada registrada
           </div>
         </div>
 
-        {/* Top Customers */}
         <div className="card">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Users className="w-5 h-5 text-emerald-500" />
             Top Clientes (30 dias)
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topCustomers || []} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis type="number" stroke="#64748b" />
-                <YAxis 
-                  dataKey="code" 
-                  type="category" 
-                  stroke="#64748b"
-                  width={80}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1a2332',
-                    border: '1px solid #1e293b',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Bar dataKey="total_minutes" fill="#10b981" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="h-64 flex items-center justify-center text-gray-500">
+            Nenhum cliente com consumo
           </div>
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <div className="flex items-center gap-3 mb-4">
@@ -189,12 +116,12 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Total DIDs</p>
-              <p className="text-xl font-bold text-white">{stats?.total_dids || 0}</p>
+              <p className="text-xl font-bold text-white">{safeStats.total_dids}</p>
             </div>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Disponíveis</span>
-            <span className="text-emerald-400">{stats?.available_dids || 0}</span>
+            <span className="text-gray-400">Disponiveis</span>
+            <span className="text-emerald-400">{safeStats.available_dids}</span>
           </div>
         </div>
 
@@ -205,12 +132,12 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Provedores</p>
-              <p className="text-xl font-bold text-white">{stats?.total_providers || 0}</p>
+              <p className="text-xl font-bold text-white">{safeStats.total_providers}</p>
             </div>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Ativos</span>
-            <span className="text-emerald-400">{stats?.total_providers || 0}</span>
+            <span className="text-emerald-400">{safeStats.total_providers}</span>
           </div>
         </div>
 
@@ -221,14 +148,12 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Receita Hoje</p>
-              <p className="text-xl font-bold text-white">
-                R$ {(stats?.revenue_today || 0).toFixed(2)}
-              </p>
+              <p className="text-xl font-bold text-white">R$ {safeStats.revenue_today.toFixed(2)}</p>
             </div>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Total Clientes</span>
-            <span className="text-primary-400">{stats?.total_customers || 0}</span>
+            <span className="text-primary-400">{safeStats.total_customers}</span>
           </div>
         </div>
       </div>

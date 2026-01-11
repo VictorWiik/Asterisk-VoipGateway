@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Phone, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { auth } from '../services/api'
 
 export default function Login({ onLogin }) {
@@ -36,23 +36,29 @@ export default function Login({ onLogin }) {
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl mb-4 shadow-lg shadow-primary-500/25">
-            <Phone className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 via-purple-500 to-violet-600 rounded-2xl mb-4 shadow-lg shadow-primary-500/25 relative">
+            {/* Flow Lines Icon */}
+            <div className="absolute inset-0 flex flex-col justify-center items-start pl-3 gap-1">
+              <div className="w-5 h-0.5 bg-white/90 rounded"></div>
+              <div className="w-7 h-0.5 bg-white/90 rounded ml-2"></div>
+              <div className="w-5 h-0.5 bg-white/90 rounded"></div>
+            </div>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full shadow-lg"></div>
           </div>
-          <h1 className="text-2xl font-bold text-white">Asterisk Admin</h1>
-          <p className="text-gray-500 mt-1">Sistema de Gerenciamento VoIP</p>
+          <h1 className="text-2xl font-bold text-white">TrunkFlow</h1>
+          <p className="text-gray-500 mt-1">VoIP Management System</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="card space-y-6">
           <div>
-            <label className="label">Usuário</label>
+            <label className="label">Usuario</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="input"
-              placeholder="Digite seu usuário"
+              placeholder="Digite seu usuario"
               required
             />
           </div>
@@ -101,7 +107,7 @@ export default function Login({ onLogin }) {
         </form>
 
         <p className="text-center text-gray-600 text-sm mt-6">
-          Asterisk Admin Panel v1.0
+          TrunkFlow v1.0.0
         </p>
       </div>
     </div>

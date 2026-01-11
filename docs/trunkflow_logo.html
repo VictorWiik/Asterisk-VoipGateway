@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TrunkFlow Logo</title>
+    <style>
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .logo-container {
+            text-align: center;
+        }
+        .logo-variants {
+            display: flex;
+            gap: 60px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .variant {
+            padding: 40px;
+            border-radius: 20px;
+            background: #16162a;
+            border: 1px solid #2d2d5a;
+        }
+        .variant-title {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        /* Logo Principal */
+        .logo-main {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+            position: relative;
+        }
+        .flow-lines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        .flow-line {
+            position: absolute;
+            background: rgba(255,255,255,0.9);
+            border-radius: 2px;
+        }
+        .flow-line-1 {
+            width: 20px;
+            height: 3px;
+            top: 18px;
+            left: 10px;
+        }
+        .flow-line-2 {
+            width: 25px;
+            height: 3px;
+            top: 28px;
+            left: 18px;
+        }
+        .flow-line-3 {
+            width: 20px;
+            height: 3px;
+            top: 38px;
+            left: 10px;
+        }
+        .flow-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .logo-name {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #c7d2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+        .logo-tagline {
+            font-size: 11px;
+            color: #6366f1;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: 2px;
+        }
+
+        /* Variante Compacta */
+        .logo-compact {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon-sm {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .logo-icon-sm .flow-line-1 { width: 14px; height: 2px; top: 14px; left: 8px; }
+        .logo-icon-sm .flow-line-2 { width: 18px; height: 2px; top: 21px; left: 12px; }
+        .logo-icon-sm .flow-line-3 { width: 14px; height: 2px; top: 28px; left: 8px; }
+        .logo-icon-sm .flow-dot { width: 6px; height: 6px; right: 9px; }
+        .logo-name-sm {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* Variante Escura */
+        .variant-dark {
+            background: #0a0a15;
+        }
+
+        /* Variante Clara */
+        .variant-light {
+            background: #f8fafc;
+        }
+        .variant-light .logo-name {
+            background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .variant-light .logo-tagline {
+            color: #6366f1;
+        }
+
+        /* Apenas Icone */
+        .icon-only {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 50px rgba(99, 102, 241, 0.4);
+            position: relative;
+            margin: 0 auto;
+        }
+        .icon-only .flow-line-1 { width: 26px; height: 4px; top: 24px; left: 14px; }
+        .icon-only .flow-line-2 { width: 32px; height: 4px; top: 38px; left: 22px; }
+        .icon-only .flow-line-3 { width: 26px; height: 4px; top: 52px; left: 14px; }
+        .icon-only .flow-dot { width: 10px; height: 10px; right: 16px; }
+
+        /* Cores */
+        .colors {
+            display: flex;
+            gap: 15px;
+            margin-top: 40px;
+            justify-content: center;
+        }
+        .color-box {
+            text-align: center;
+        }
+        .color-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        .color-name {
+            color: #888;
+            font-size: 10px;
+        }
+        .color-hex {
+            color: #fff;
+            font-size: 11px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo-container">
+        <div class="logo-variants">
+            <!-- Logo Principal -->
+            <div class="variant">
+                <div class="variant-title">Logo Principal</div>
+                <div class="logo-main">
+                    <div class="logo-icon">
+                        <div class="flow-lines">
+                            <div class="flow-line flow-line-1"></div>
+                            <div class="flow-line flow-line-2"></div>
+                            <div class="flow-line flow-line-3"></div>
+                            <div class="flow-dot"></div>
+                        </div>
+                    </div>
+                    <div class="logo-text">
+                        <div class="logo-name">TrunkFlow</div>
+                        <div class="logo-tagline">VoIP Management</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apenas Ícone -->
+            <div class="variant">
+                <div class="variant-title">Apenas Ícone</div>
+                <div class="icon-only">
+                    <div class="flow-lines">
+                        <div class="flow-line flow-line-1"></div>
+                        <div class="flow-line flow-line-2"></div>
+                        <div class="flow-line flow-line-3"></div>
+                        <div class="flow-dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compacto -->
+            <div class="variant">
+                <div class="variant-title">Compacto</div>
+                <div class="logo-compact">
+                    <div class="logo-icon-sm">
+                        <div class="flow-lines">
+                            <div class="flow-line flow-line-1"></div>
+                            <div class="flow-line flow-line-2"></div>
+                            <div class="flow-line flow-line-3"></div>
+                            <div class="flow-dot"></div>
+                        </div>
+                    </div>
+                    <div class="logo-name-sm">TrunkFlow</div>
+                </div>
+            </div>
+
+            <!-- Fundo Claro -->
+            <div class="variant variant-light">
+                <div class="variant-title" style="color:#999">Fundo Claro</div>
+                <div class="logo-main">
+                    <div class="logo-icon">
+                        <div class="flow-lines">
+                            <div class="flow-line flow-line-1"></div>
+                            <div class="flow-line flow-line-2"></div>
+                            <div class="flow-line flow-line-3"></div>
+                            <div class="flow-dot"></div>
+                        </div>
+                    </div>
+                    <div class="logo-text">
+                        <div class="logo-name">TrunkFlow</div>
+                        <div class="logo-tagline">VoIP Management</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paleta de Cores -->
+        <div class="colors">
+            <div class="color-box">
+                <div class="color-swatch" style="background: #6366f1"></div>
+                <div class="color-name">Primary</div>
+                <div class="color-hex">#6366f1</div>
+            </div>
+            <div class="color-box">
+                <div class="color-swatch" style="background: #8b5cf6"></div>
+                <div class="color-name">Secondary</div>
+                <div class="color-hex">#8b5cf6</div>
+            </div>
+            <div class="color-box">
+                <div class="color-swatch" style="background: #a855f7"></div>
+                <div class="color-name">Accent</div>
+                <div class="color-hex">#a855f7</div>
+            </div>
+            <div class="color-box">
+                <div class="color-swatch" style="background: #1a1a2e"></div>
+                <div class="color-name">Dark BG</div>
+                <div class="color-hex">#1a1a2e</div>
+            </div>
+            <div class="color-box">
+                <div class="color-swatch" style="background: #16162a"></div>
+                <div class="color-name">Card BG</div>
+                <div class="color-hex">#16162a</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
