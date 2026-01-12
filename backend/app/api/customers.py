@@ -1,171 +1,165 @@
-from typing import List
-from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from typing import List, Optional
+from pydantic import BaseModel
+from uuid import UUID
+from datetime import datetime
+
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models import Customer, User
-from app.schemas import CustomerCreate, CustomerUpdate, CustomerResponse
-from app.services.asterisk import asterisk_service
+from app.models.customer import Customer
+from app.services.asterisk import AsteriskService
 
-router = APIRouter(prefix="/customers", tags=["Clientes"])
+router = APIRouter()
 
+# Schemas
+class CustomerBase(BaseModel):
+    code: str
+    name: str
+    type: Optional[str] = "trunk"
+    trunk_ip: Optional[str] = None
+    trunk_port: Optional[int] = 5060
+    trunk_context: Optional[str] = "from-trunk"
+    trunk_codecs: Optional[str] = "alaw,ulaw"
+    tech_prefix: Optional[str] = None
+    plan_id: Optional[UUID] = None
+    status: Optional[str] = "active"
 
-async def sync_customer_trunks_to_asterisk(db: AsyncSession):
-    """Sincroniza clientes trunk com o Asterisk"""
-    result = await db.execute(select(Customer).where(Customer.type == "trunk"))
-    customers = result.scalars().all()
-    
-    customers_data = [
-        {
-            "code": c.code,
-            "name": c.name,
-            "type": c.type,
-            "status": c.status,
-            "trunk_ip": c.trunk_ip,
-            "trunk_port": c.trunk_port,
-            "trunk_codecs": c.trunk_codecs,
-            "trunk_auth_type": c.trunk_auth_type,
-            "trunk_username": c.trunk_username,
-            "trunk_password": c.trunk_password,
-            "trunk_tech_prefix": c.trunk_tech_prefix,
-            "trunk_context": c.trunk_context,
-        }
-        for c in customers
-    ]
-    
-    success = await asterisk_service.save_customer_trunks_config(customers_data)
-    
-    if success:
-        await asterisk_service.reload_pjsip()
-    
-    return success
+class CustomerCreate(CustomerBase):
+    pass
 
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    trunk_ip: Optional[str] = None
+    trunk_port: Optional[int] = None
+    trunk_context: Optional[str] = None
+    trunk_codecs: Optional[str] = None
+    tech_prefix: Optional[str] = None
+    plan_id: Optional[UUID] = None
+    status: Optional[str] = None
 
+class CustomerResponse(CustomerBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Endpoints
 @router.get("/", response_model=List[CustomerResponse])
 async def list_customers(
     skip: int = 0,
     limit: int = 100,
-    status_filter: str = None,
-    type_filter: str = None,
+    search: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
-    """Lista todos os clientes"""
     query = select(Customer)
-    
-    if status_filter:
-        query = query.where(Customer.status == status_filter)
-    
-    if type_filter:
-        query = query.where(Customer.type == type_filter)
-    
-    result = await db.execute(query.offset(skip).limit(limit).order_by(Customer.name))
+    if search:
+        query = query.where(
+            (Customer.name.ilike(f"%{search}%")) | 
+            (Customer.code.ilike(f"%{search}%"))
+        )
+    query = query.offset(skip).limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
-
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
 async def get_customer(
     customer_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
-    """Obtém um cliente pelo ID"""
-    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    query = select(Customer).where(Customer.id == customer_id)
+    result = await db.execute(query)
     customer = result.scalar_one_or_none()
-    
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
     return customer
 
-
-@router.post("/", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CustomerResponse, status_code=201)
 async def create_customer(
-    data: CustomerCreate,
+    customer_data: CustomerCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
-    """Cria um novo cliente"""
-    # Verifica se código já existe
-    result = await db.execute(select(Customer).where(Customer.code == data.code))
+    # Verificar se código já existe
+    query = select(Customer).where(Customer.code == customer_data.code)
+    result = await db.execute(query)
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Código de cliente já existe")
-    
-    customer = Customer(**data.model_dump())
+        raise HTTPException(status_code=400, detail="Código já existe")
+
+    customer = Customer(**customer_data.model_dump())
     db.add(customer)
     await db.commit()
     await db.refresh(customer)
-    
-    # Se for trunk, sincroniza com Asterisk
-    if customer.type == "trunk":
-        await sync_customer_trunks_to_asterisk(db)
-    
-    return customer
 
+    # Sync com Asterisk se for trunk
+    if customer.type == "trunk" and customer.trunk_ip:
+        try:
+            asterisk = AsteriskService()
+            await asterisk.sync_customer_trunks(db)
+        except Exception as e:
+            print(f"Erro ao sincronizar com Asterisk: {e}")
+
+    return customer
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
 async def update_customer(
     customer_id: UUID,
-    data: CustomerUpdate,
+    customer_data: CustomerUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
-    """Atualiza um cliente"""
-    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    query = select(Customer).where(Customer.id == customer_id)
+    result = await db.execute(query)
     customer = result.scalar_one_or_none()
     
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
-    was_trunk = customer.type == "trunk"
-    
-    for field, value in data.model_dump(exclude_unset=True).items():
+
+    update_data = customer_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
         setattr(customer, field, value)
-    
+
     await db.commit()
     await db.refresh(customer)
-    
-    # Se era trunk ou virou trunk, sincroniza
-    if was_trunk or customer.type == "trunk":
-        await sync_customer_trunks_to_asterisk(db)
-    
+
+    # Sync com Asterisk se for trunk
+    if customer.type == "trunk":
+        try:
+            asterisk = AsteriskService()
+            await asterisk.sync_customer_trunks(db)
+        except Exception as e:
+            print(f"Erro ao sincronizar com Asterisk: {e}")
+
     return customer
 
-
-@router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{customer_id}")
 async def delete_customer(
     customer_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
-    """Remove um cliente"""
-    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    query = select(Customer).where(Customer.id == customer_id)
+    result = await db.execute(query)
     customer = result.scalar_one_or_none()
     
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
-    was_trunk = customer.type == "trunk"
-    
+
     await db.delete(customer)
     await db.commit()
-    
-    # Se era trunk, sincroniza para remover do Asterisk
-    if was_trunk:
-        await sync_customer_trunks_to_asterisk(db)
 
+    # Sync com Asterisk
+    try:
+        asterisk = AsteriskService()
+        await asterisk.sync_customer_trunks(db)
+    except Exception as e:
+        print(f"Erro ao sincronizar com Asterisk: {e}")
 
-@router.post("/sync-trunks", status_code=status.HTTP_200_OK)
-async def sync_trunks(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Força sincronização dos clientes trunk com o Asterisk"""
-    success = await sync_customer_trunks_to_asterisk(db)
-    
-    if success:
-        return {"message": "Sincronização realizada com sucesso"}
-    else:
-        raise HTTPException(status_code=500, detail="Erro na sincronização")
+    return {"message": "Cliente excluído com sucesso"}

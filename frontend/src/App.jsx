@@ -1,24 +1,35 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+
 import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
-import Providers from './pages/Providers'
 import Customers from './pages/Customers'
 import DIDs from './pages/DIDs'
-import Conference from './pages/Conference'
-import Settings from './pages/Settings'
+import Providers from './pages/Providers'
 import Gateways from './pages/Gateways'
-import RoutesPage from './pages/Routes'
+import Routes_ from './pages/Routes'
 import Extensions from './pages/Extensions'
-import Reports from './pages/Reports'
 import Tariffs from './pages/Tariffs'
+import Reports from './pages/Reports'
+import Settings from './pages/Settings'
+import Conference from './pages/Conference'
+import Integrations from './pages/Integrations'
+import Plans from './pages/Plans'
 
-function Layout({ children, onLogout }) {
+const queryClient = new QueryClient()
+
+function PrivateRoute({ children }) {
+  const token = localStorage.getItem('token')
+  return token ? children : <Navigate to="/login" />
+}
+
+function AppLayout({ children }) {
   return (
-    <div className="min-h-screen bg-dark-500">
-      <Sidebar onLogout={onLogout} />
-      <main className="ml-64 p-8">
+    <div className="flex min-h-screen bg-dark-500">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8">
         {children}
       </main>
     </div>
@@ -26,52 +37,82 @@ function Layout({ children, onLogout }) {
 }
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    setIsAuthenticated(!!token)
-    setLoading(false)
-  }, [])
-
-  const handleLogin = () => {
-    setIsAuthenticated(true)
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    setIsAuthenticated(false)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-dark-500 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />
-  }
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'))
 
   return (
-    <Layout onLogout={handleLogout}>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/dids" element={<DIDs />} />
-        <Route path="/providers" element={<Providers />} />
-        <Route path="/gateways" element={<Gateways />} />
-        <Route path="/routes" element={<RoutesPage />} />
-        <Route path="/extensions" element={<Extensions />} />
-        <Route path="/conference" element={<Conference />} />
-        <Route path="/tariffs" element={<Tariffs />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={
+            isAuthenticated ? <Navigate to="/" /> : <Login onLogin={() => setIsAuthenticated(true)} />
+          } />
+          <Route path="/" element={
+            <PrivateRoute>
+              <AppLayout><Dashboard /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/customers" element={
+            <PrivateRoute>
+              <AppLayout><Customers /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/plans" element={
+            <PrivateRoute>
+              <AppLayout><Plans /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/dids" element={
+            <PrivateRoute>
+              <AppLayout><DIDs /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/providers" element={
+            <PrivateRoute>
+              <AppLayout><Providers /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/gateways" element={
+            <PrivateRoute>
+              <AppLayout><Gateways /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/routes" element={
+            <PrivateRoute>
+              <AppLayout><Routes_ /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/extensions" element={
+            <PrivateRoute>
+              <AppLayout><Extensions /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/tariffs" element={
+            <PrivateRoute>
+              <AppLayout><Tariffs /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/reports" element={
+            <PrivateRoute>
+              <AppLayout><Reports /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/conference" element={
+            <PrivateRoute>
+              <AppLayout><Conference /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/integrations" element={
+            <PrivateRoute>
+              <AppLayout><Integrations /></AppLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/settings" element={
+            <PrivateRoute>
+              <AppLayout><Settings /></AppLayout>
+            </PrivateRoute>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }

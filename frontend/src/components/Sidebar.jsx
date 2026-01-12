@@ -11,12 +11,15 @@ import {
   FileText,
   Settings,
   LogOut,
-  PhoneForwarded
+  PhoneForwarded,
+  Plug,
+  Package
 } from 'lucide-react'
 
 const menuItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/customers', icon: Users, label: 'Clientes' },
+  { path: '/plans', icon: Package, label: 'Planos' },
   { path: '/dids', icon: Phone, label: 'DIDs' },
   { path: '/providers', icon: Building2, label: 'Provedores' },
   { path: '/gateways', icon: Router, label: 'Gateways' },
@@ -25,6 +28,7 @@ const menuItems = [
   { path: '/tariffs', icon: DollarSign, label: 'Tarifas' },
   { path: '/reports', icon: FileText, label: 'Relatorios' },
   { path: '/conference', icon: PhoneForwarded, label: 'Conferencia' },
+  { path: '/integrations', icon: Plug, label: 'Integracoes' },
   { path: '/settings', icon: Settings, label: 'Configuracoes' },
 ]
 
