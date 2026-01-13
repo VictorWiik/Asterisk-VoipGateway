@@ -8,7 +8,7 @@ from app.core.security import verify_password, create_access_token, get_current_
 from app.models.user import User
 from app.schemas import Token, LoginRequest, UserResponse
 
-router = APIRouter(prefix="/auth", tags=["Autenticação"])
+router = APIRouter()
 
 
 class ChangePasswordRequest(BaseModel):

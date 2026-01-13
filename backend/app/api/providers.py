@@ -9,7 +9,7 @@ from app.models import Provider, User
 from app.schemas import ProviderCreate, ProviderUpdate, ProviderResponse
 from app.services.asterisk import asterisk_service
 
-router = APIRouter(prefix="/providers", tags=["Provedores"])
+router = APIRouter()
 
 
 async def sync_providers_to_asterisk(db: AsyncSession):

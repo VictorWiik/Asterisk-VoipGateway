@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models import Tariff, User
 
-router = APIRouter(prefix="/tariffs", tags=["Tarifas"])
+router = APIRouter()
 
 
 class TariffBase(BaseModel):

@@ -9,7 +9,7 @@ from app.models import DID, CustomerDID, Customer, User
 from app.schemas import DIDCreate, DIDUpdate, DIDResponse, DIDImport, CustomerDIDCreate, CustomerDIDResponse
 from app.services.asterisk import asterisk_service
 
-router = APIRouter(prefix="/dids", tags=["DIDs"])
+router = APIRouter()
 
 
 async def sync_dids_to_asterisk(db: AsyncSession):

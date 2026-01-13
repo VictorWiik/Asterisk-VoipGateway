@@ -9,7 +9,7 @@ from app.models import Gateway, User
 from app.schemas import GatewayCreate, GatewayUpdate, GatewayResponse
 from app.services.asterisk import asterisk_service
 
-router = APIRouter(prefix="/gateways", tags=["Gateways"])
+router = APIRouter()
 
 
 async def sync_gateways_to_asterisk(db: AsyncSession):

@@ -9,7 +9,7 @@ from app.core.security import get_current_user
 from app.models import Provider, User
 from app.services.asterisk import asterisk_service
 
-router = APIRouter(prefix="/conference", tags=["Conferência"])
+router = APIRouter()
 
 
 class ConferenceRequest(BaseModel):

@@ -12,16 +12,14 @@ class Customer(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     code = Column(String(50), unique=True, nullable=False)
     name = Column(String(200), nullable=False)
-    type = Column(String(20), default="trunk")  # trunk ou extension
+    type = Column(String(20), default="trunk")
     
-    # Campos para tipo trunk
     trunk_ip = Column(String(50))
     trunk_port = Column(Integer, default=5060)
     trunk_context = Column(String(50), default="from-trunk")
     trunk_codecs = Column(String(100), default="alaw,ulaw")
     tech_prefix = Column(String(20))
     
-    # Plano associado
     plan_id = Column(UUID(as_uuid=True), ForeignKey('plans.id'))
     
     status = Column(String(20), default="active")
@@ -31,4 +29,5 @@ class Customer(Base):
     # Relacionamentos
     plan = relationship("Plan", back_populates="customers")
     extensions = relationship("Extension", back_populates="customer")
-    dids = relationship("CustomerDID", back_populates="customer")
+    customer_dids = relationship("CustomerDID", back_populates="customer")
+    customer_routes = relationship("CustomerRoute", back_populates="customer")

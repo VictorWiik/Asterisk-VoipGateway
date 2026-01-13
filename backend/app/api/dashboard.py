@@ -8,7 +8,7 @@ from app.core.security import get_current_user
 from app.models import Customer, DID, Extension, Provider, CDR, User
 from app.schemas import DashboardStats
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter()
 
 
 @router.get("/stats", response_model=DashboardStats)

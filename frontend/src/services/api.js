@@ -7,7 +7,6 @@ const api = axios.create({
   },
 })
 
-// Interceptor para adicionar token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) {
@@ -16,7 +15,6 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Interceptor para tratar erros
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -28,45 +26,40 @@ api.interceptors.response.use(
   }
 )
 
-// Auth
 export const auth = {
   login: (data) => api.post('/auth/login', data),
   me: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
 }
 
-// Providers
 export const providers = {
   list: () => api.get('/providers'),
-  get: (id) => api.get(`/providers/${id}`),
+  get: (id) => api.get('/providers/' + id),
   create: (data) => api.post('/providers', data),
-  update: (id, data) => api.put(`/providers/${id}`, data),
-  delete: (id) => api.delete(`/providers/${id}`),
+  update: (id, data) => api.put('/providers/' + id, data),
+  delete: (id) => api.delete('/providers/' + id),
 }
 
-// Customers
 export const customers = {
   list: (params) => api.get('/customers', { params }),
-  get: (id) => api.get(`/customers/${id}`),
+  get: (id) => api.get('/customers/' + id),
   create: (data) => api.post('/customers', data),
-  update: (id, data) => api.put(`/customers/${id}`, data),
-  delete: (id) => api.delete(`/customers/${id}`),
+  update: (id, data) => api.put('/customers/' + id, data),
+  delete: (id) => api.delete('/customers/' + id),
 }
 
-// DIDs
 export const dids = {
   list: (params) => api.get('/dids', { params }),
-  get: (id) => api.get(`/dids/${id}`),
+  get: (id) => api.get('/dids/' + id),
   create: (data) => api.post('/dids', data),
   import: (data) => api.post('/dids/import', data),
-  update: (id, data) => api.put(`/dids/${id}`, data),
-  delete: (id) => api.delete(`/dids/${id}`),
+  update: (id, data) => api.put('/dids/' + id, data),
+  delete: (id) => api.delete('/dids/' + id),
   summary: () => api.get('/dids/summary'),
-  allocate: (id, data) => api.post(`/dids/${id}/allocate`, data),
-  deallocate: (id) => api.post(`/dids/${id}/deallocate`),
+  allocate: (id, data) => api.post('/dids/' + id + '/allocate', data),
+  deallocate: (id) => api.post('/dids/' + id + '/deallocate'),
 }
 
-// Dashboard
 export const dashboard = {
   stats: () => api.get('/dashboard/stats'),
   callsByHour: (days) => api.get('/dashboard/calls/by-hour', { params: { days } }),

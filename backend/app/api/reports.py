@@ -11,7 +11,7 @@ from app.models import CDR, DID, Provider, Customer, User
 import io
 import csv
 
-router = APIRouter(prefix="/reports", tags=["Relatorios"])
+router = APIRouter()
 
 
 @router.get("/cdr")

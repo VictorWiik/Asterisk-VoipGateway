@@ -1,9 +1,8 @@
-import asyncio
 import socket
-from typing import Dict, List, Optional
+from typing import Dict
 
 class AMIClient:
-    def __init__(self, host: str = "127.0.0.1", port: int = 5038, username: str = "admin", secret: str = "admin"):
+    def __init__(self, host: str = "127.0.0.1", port: int = 5038, username: str = "admin", secret: str = "admin123"):
         self.host = host
         self.port = port
         self.username = username
@@ -71,48 +70,19 @@ class AMIClient:
                     
                     for line in block.split("\r\n"):
                         if line.startswith("ObjectName:"):
-                            endpoint_name = line.split(":")[1].strip()
+                            endpoint_name = line.split(":", 1)[1].strip()
                         elif line.startswith("DeviceState:"):
-                            device_state = line.split(":")[1].strip()
+                            device_state = line.split(":", 1)[1].strip()
                     
                     if endpoint_name:
-                        endpoints[endpoint_name] = device_state
+                        # Filtrar apenas ramais numéricos
+                        if endpoint_name.isdigit():
+                            endpoints[endpoint_name] = device_state
             
         except Exception as e:
             print(f"AMI error getting endpoints: {e}")
         
         return endpoints
-    
-    def get_endpoint_status(self, endpoint: str) -> str:
-        """Retorna status de um endpoint específico"""
-        if not self.sock:
-            if not self.connect():
-                return "Unknown"
-        
-        try:
-            cmd = f"Action: PJSIPShowEndpoint\r\nEndpoint: {endpoint}\r\n\r\n"
-            self.sock.send(cmd.encode())
-            
-            response = ""
-            while True:
-                try:
-                    chunk = self.sock.recv(4096).decode()
-                    response += chunk
-                    if "EventList: Complete" in chunk or not chunk:
-                        break
-                except socket.timeout:
-                    break
-            
-            if "DeviceState: Not in use" in response or "DeviceState: InUse" in response:
-                return "Online"
-            elif "DeviceState: Unavailable" in response:
-                return "Offline"
-            else:
-                return "Unknown"
-                
-        except Exception as e:
-            print(f"AMI error: {e}")
-            return "Unknown"
 
 
 def get_extensions_status() -> Dict[str, str]:
@@ -121,9 +91,9 @@ def get_extensions_status() -> Dict[str, str]:
     try:
         if ami.connect():
             endpoints = ami.get_pjsip_endpoints()
-            # Filtrar apenas ramais (geralmente numéricos de 3-4 dígitos)
-            extensions = {k: v for k, v in endpoints.items() if k.isdigit() and len(k) <= 5}
-            return extensions
+            return endpoints
+    except Exception as e:
+        print(f"Error getting extensions status: {e}")
     finally:
         ami.disconnect()
     return {}
@@ -131,11 +101,7 @@ def get_extensions_status() -> Dict[str, str]:
 
 def check_extension_online(extension: str) -> bool:
     """Verifica se um ramal específico está online"""
-    ami = AMIClient()
-    try:
-        if ami.connect():
-            status = ami.get_endpoint_status(extension)
-            return status == "Online"
-    finally:
-        ami.disconnect()
-    return False
+    status = get_extensions_status()
+    ext_status = status.get(extension, "Unavailable")
+    # "Not in use" ou "In use" significa online
+    return ext_status in ["Not in use", "In use", "Ringing", "On hold"]
