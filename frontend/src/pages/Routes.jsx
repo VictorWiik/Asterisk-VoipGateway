@@ -87,7 +87,7 @@ function RouteForm({ route, gateways, onSubmit, onCancel, loading }) {
           required
         />
         <p className="text-xs text-gray-500 mt-1">
-          Ex: _55XXXXXXXX (fixo BR), _559XXXXXXXXX (movel BR), _00X. (internacional)
+          Ex: _55XX[2-5]XXXXXXX (fixo BR), _55XX9XXXXXXXX (móvel BR), _00X. (internacional)
         </p>
       </div>
 

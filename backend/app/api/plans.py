@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, insert
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from pydantic import BaseModel
@@ -95,18 +95,14 @@ async def create_plan(
     db.add(plan)
     await db.flush()
 
-    # Associar rotas
+    # Associar rotas usando insert direto na tabela de associação
     if plan_data.route_ids:
         for route_id in plan_data.route_ids:
-            query = select(Route).where(Route.id == route_id)
-            result = await db.execute(query)
-            route = result.scalar_one_or_none()
-            if route:
-                plan.routes.append(route)
+            stmt = insert(plan_routes).values(plan_id=plan.id, route_id=route_id)
+            await db.execute(stmt)
 
     await db.commit()
-    await db.refresh(plan)
-    
+
     # Recarregar com rotas
     query = select(Plan).options(selectinload(Plan.routes)).where(Plan.id == plan.id)
     result = await db.execute(query)
@@ -119,10 +115,10 @@ async def update_plan(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    query = select(Plan).options(selectinload(Plan.routes)).where(Plan.id == plan_id)
+    query = select(Plan).where(Plan.id == plan_id)
     result = await db.execute(query)
     plan = result.scalar_one_or_none()
-    
+
     if not plan:
         raise HTTPException(status_code=404, detail="Plano não encontrado")
 
@@ -138,18 +134,19 @@ async def update_plan(
 
     # Atualizar rotas
     if plan_data.route_ids is not None:
-        plan.routes.clear()
+        # Remover rotas antigas
+        stmt = delete(plan_routes).where(plan_routes.c.plan_id == plan_id)
+        await db.execute(stmt)
+        
+        # Adicionar novas rotas
         for route_id in plan_data.route_ids:
-            query = select(Route).where(Route.id == route_id)
-            result = await db.execute(query)
-            route = result.scalar_one_or_none()
-            if route:
-                plan.routes.append(route)
+            stmt = insert(plan_routes).values(plan_id=plan_id, route_id=route_id)
+            await db.execute(stmt)
 
     await db.commit()
-    
+
     # Recarregar com rotas
-    query = select(Plan).options(selectinload(Plan.routes)).where(Plan.id == plan.id)
+    query = select(Plan).options(selectinload(Plan.routes)).where(Plan.id == plan_id)
     result = await db.execute(query)
     return result.scalar_one()
 
@@ -162,9 +159,13 @@ async def delete_plan(
     query = select(Plan).where(Plan.id == plan_id)
     result = await db.execute(query)
     plan = result.scalar_one_or_none()
-    
+
     if not plan:
         raise HTTPException(status_code=404, detail="Plano não encontrado")
+
+    # Remover associações primeiro
+    stmt = delete(plan_routes).where(plan_routes.c.plan_id == plan_id)
+    await db.execute(stmt)
 
     await db.delete(plan)
     await db.commit()
