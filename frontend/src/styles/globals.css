@@ -153,3 +153,7 @@ select option {
 input, textarea, select {
   color-scheme: dark;
 }
+
+[class*="bg-white"] {
+  background-color: #1e1e45 !important;
+}

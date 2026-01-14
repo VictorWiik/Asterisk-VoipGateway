@@ -303,6 +303,7 @@ class ExtensionBase(BaseModel):
     context: str = "from-internal"
     max_contacts: int = 1
     codecs: str = "alaw,ulaw"
+    nat_enabled: bool = True
 
 
 class ExtensionCreate(ExtensionBase):
@@ -319,6 +320,7 @@ class ExtensionUpdate(BaseModel):
     max_contacts: Optional[int] = None
     codecs: Optional[str] = None
     status: Optional[str] = None
+    nat_enabled: Optional[bool] = None
 
 
 class ExtensionResponse(ExtensionBase):

@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, customers, providers, gateways, dids, routes, extensions, tariffs, dashboard, reports, conference
-from app.api import route_plans, tariff_plans, gateway_groups
+from app.api import auth, customers, providers, gateways, dids, routes, extensions, tariffs, dashboard, reports, conference, debug
+from app.api import route_plans, tariff_plans, gateway_groups, debug
 
 app = FastAPI(title="TrunkFlow API", version="1.0.0")
 
@@ -32,3 +32,7 @@ app.include_router(tariff_plans.router, prefix="/api/v1/tariff-plans", tags=["Ta
 @app.get("/api/v1/health")
 async def health_check():
     return {"status": "healthy"}
+
+# Debug routes
+from app.api import debug
+app.include_router(debug.router, prefix="/api/v1/debug", tags=["Debug"])

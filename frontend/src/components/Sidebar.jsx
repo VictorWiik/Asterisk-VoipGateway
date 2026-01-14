@@ -22,7 +22,8 @@ import {
   Send,
   Receipt,
   Network,
-  Headphones
+  Headphones,
+  Bug
 } from 'lucide-react'
 
 const menuItems = [
@@ -63,6 +64,7 @@ const menuItems = [
   { path: '/providers', icon: Building2, label: 'Provedores' },
   { path: '/reports', icon: FileText, label: 'Relatorios' },
   { path: '/conference', icon: PhoneForwarded, label: 'Conferencia' },
+  { path: '/debug', icon: Bug, label: 'Debug Center' },
   { path: '/integrations', icon: Plug, label: 'Integracoes' },
   { path: '/settings', icon: Settings, label: 'Configuracoes' },
 ]

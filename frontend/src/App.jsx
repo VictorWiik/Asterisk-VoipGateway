@@ -18,6 +18,7 @@ import Integrations from './pages/Integrations'
 import Settings from './pages/Settings'
 import RoutePlans from './pages/RoutePlans'
 import TariffPlans from './pages/TariffPlans'
+import Debug from './pages/Debug'
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="conference" element={<Conference />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="debug" element={<Debug />} />
       </Route>
     </Routes>
   )

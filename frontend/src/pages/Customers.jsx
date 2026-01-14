@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, X, Users, Phone, Server, Package } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Building2, Route, DollarSign } from 'lucide-react'
 import api from '../services/api'
 
 export default function Customers() {
@@ -15,7 +15,8 @@ export default function Customers() {
     trunk_context: 'from-trunk',
     trunk_codecs: 'alaw,ulaw',
     tech_prefix: '',
-    plan_id: '',
+    route_plan_id: '',
+    tariff_plan_id: '',
     status: 'active'
   })
 
@@ -26,9 +27,14 @@ export default function Customers() {
     queryFn: () => api.get('/customers/').then(res => res.data)
   })
 
-  const { data: plans } = useQuery({
-    queryKey: ['plans'],
-    queryFn: () => api.get('/plans/').then(res => res.data)
+  const { data: routePlans } = useQuery({
+    queryKey: ['route-plans'],
+    queryFn: () => api.get('/route-plans/').then(res => res.data)
+  })
+
+  const { data: tariffPlans } = useQuery({
+    queryKey: ['tariff-plans'],
+    queryFn: () => api.get('/tariff-plans/').then(res => res.data)
   })
 
   const createMutation = useMutation({
@@ -40,7 +46,7 @@ export default function Customers() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.put(`/customers/${id}`, data),
+    mutationFn: ({ id, data }) => api.put('/customers/' + id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['customers'])
       closeModal()
@@ -48,7 +54,7 @@ export default function Customers() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/customers/${id}`),
+    mutationFn: (id) => api.delete('/customers/' + id),
     onSuccess: () => queryClient.invalidateQueries(['customers'])
   })
 
@@ -58,13 +64,14 @@ export default function Customers() {
       setFormData({
         code: customer.code,
         name: customer.name,
-        type: customer.type,
+        type: customer.type || 'trunk',
         trunk_ip: customer.trunk_ip || '',
         trunk_port: customer.trunk_port || 5060,
         trunk_context: customer.trunk_context || 'from-trunk',
         trunk_codecs: customer.trunk_codecs || 'alaw,ulaw',
         tech_prefix: customer.tech_prefix || '',
-        plan_id: customer.plan_id || '',
+        route_plan_id: customer.route_plan_id || '',
+        tariff_plan_id: customer.tariff_plan_id || '',
         status: customer.status
       })
     } else {
@@ -78,7 +85,8 @@ export default function Customers() {
         trunk_context: 'from-trunk',
         trunk_codecs: 'alaw,ulaw',
         tech_prefix: '',
-        plan_id: '',
+        route_plan_id: '',
+        tariff_plan_id: '',
         status: 'active'
       })
     }
@@ -92,14 +100,15 @@ export default function Customers() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const dataToSend = {
+    const data = {
       ...formData,
-      plan_id: formData.plan_id || null
+      route_plan_id: formData.route_plan_id || null,
+      tariff_plan_id: formData.tariff_plan_id || null
     }
     if (editingCustomer) {
-      updateMutation.mutate({ id: editingCustomer.id, data: dataToSend })
+      updateMutation.mutate({ id: editingCustomer.id, data })
     } else {
-      createMutation.mutate(dataToSend)
+      createMutation.mutate(data)
     }
   }
 
@@ -107,11 +116,6 @@ export default function Customers() {
     if (confirm('Tem certeza que deseja excluir este cliente?')) {
       deleteMutation.mutate(id)
     }
-  }
-
-  const getPlanName = (planId) => {
-    const plan = plans?.find(p => p.id === planId)
-    return plan?.name || '-'
   }
 
   if (isLoading) {
@@ -127,7 +131,7 @@ export default function Customers() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Clientes</h1>
-          <p className="text-gray-400 mt-1">Gerencie seus clientes trunk e ramal</p>
+          <p className="text-gray-400 mt-1">Gerencie os clientes do sistema</p>
         </div>
         <button onClick={() => openModal()} className="btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
@@ -137,15 +141,15 @@ export default function Customers() {
 
       {/* Tabela */}
       <div className="card p-0 overflow-hidden">
-        <div className="table-container">
+        <div className="overflow-x-auto">
           <table className="table">
             <thead>
               <tr>
                 <th>Código</th>
                 <th>Nome</th>
                 <th>Tipo</th>
-                <th>IP/Conexão</th>
-                <th>Plano</th>
+                <th>Plano de Rotas</th>
+                <th>Plano de Tarifas</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
@@ -158,44 +162,37 @@ export default function Customers() {
                   </td>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        customer.type === 'trunk' 
-                          ? 'bg-violet-500/20 text-violet-400' 
-                          : 'bg-emerald-500/20 text-emerald-400'
-                      }`}>
-                        {customer.type === 'trunk' ? <Server className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+                      <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center">
+                        <Building2 className="w-4 h-4 text-primary-400" />
                       </div>
                       <span className="text-white">{customer.name}</span>
                     </div>
                   </td>
                   <td>
-                    <span className={`badge ${
-                      customer.type === 'trunk' ? 'badge-purple' : 'badge-info'
-                    }`}>
-                      {customer.type === 'trunk' ? 'Trunk' : 'Ramal'}
-                    </span>
+                    <span className="text-gray-300 capitalize">{customer.type}</span>
                   </td>
                   <td>
-                    {customer.type === 'trunk' ? (
-                      <span className="font-mono text-sm">{customer.trunk_ip}:{customer.trunk_port}</span>
+                    {customer.route_plan ? (
+                      <div className="flex items-center gap-2">
+                        <Route className="w-4 h-4 text-primary-400" />
+                        <span className="text-gray-300">{customer.route_plan.name}</span>
+                      </div>
                     ) : (
                       <span className="text-gray-500">-</span>
                     )}
                   </td>
                   <td>
-                    {customer.plan_id ? (
-                      <span className="inline-flex items-center gap-1 text-sm">
-                        <Package className="w-3 h-3 text-primary-400" />
-                        <span className="text-gray-300">{getPlanName(customer.plan_id)}</span>
-                      </span>
+                    {customer.tariff_plan ? (
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-emerald-400" />
+                        <span className="text-gray-300">{customer.tariff_plan.name}</span>
+                      </div>
                     ) : (
-                      <span className="text-gray-500">Sem plano</span>
+                      <span className="text-gray-500">-</span>
                     )}
                   </td>
                   <td>
-                    <span className={`badge ${
-                      customer.status === 'active' ? 'badge-success' : 'badge-danger'
-                    }`}>
+                    <span className={`badge ${customer.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
                       {customer.status === 'active' ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
@@ -253,7 +250,6 @@ export default function Customers() {
                     className="input"
                     placeholder="CLI001"
                     required
-                    disabled={!!editingCustomer}
                   />
                 </div>
                 <div>
@@ -282,37 +278,30 @@ export default function Customers() {
                   </select>
                 </div>
                 <div>
-                  <label className="label">Plano</label>
+                  <label className="label">Status</label>
                   <select
-                    value={formData.plan_id}
-                    onChange={(e) => setFormData({ ...formData, plan_id: e.target.value })}
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     className="input"
                   >
-                    <option value="">Selecione um plano</option>
-                    {plans?.filter(p => p.status === 'active').map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name}
-                      </option>
-                    ))}
+                    <option value="active">Ativo</option>
+                    <option value="inactive">Inativo</option>
                   </select>
                 </div>
               </div>
 
               {formData.type === 'trunk' && (
-                <>
-                  <div className="border-t border-dark-100 pt-4 mt-4">
-                    <h3 className="text-sm font-medium text-gray-400 mb-4">CONFIGURAÇÃO SIP</h3>
-                  </div>
-                  
+                <div className="border-t border-dark-100 pt-4 mt-4">
+                  <h3 className="text-white font-medium mb-4">Configurações do Trunk</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="label">IP Address</label>
+                      <label className="label">IP do Trunk</label>
                       <input
                         type="text"
                         value={formData.trunk_ip}
                         onChange={(e) => setFormData({ ...formData, trunk_ip: e.target.value })}
                         className="input"
-                        placeholder="200.200.200.200"
+                        placeholder="192.168.1.100"
                       />
                     </div>
                     <div>
@@ -325,21 +314,9 @@ export default function Customers() {
                       />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <label className="label">Tech Prefix</label>
-                      <input
-                        type="text"
-                        value={formData.tech_prefix}
-                        onChange={(e) => setFormData({ ...formData, tech_prefix: e.target.value })}
-                        className="input"
-                        placeholder="0XX"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Prefixo adicionado antes do número</p>
-                    </div>
-                    <div>
-                      <label className="label">Context</label>
+                      <label className="label">Contexto</label>
                       <input
                         type="text"
                         value={formData.trunk_context}
@@ -347,30 +324,69 @@ export default function Customers() {
                         className="input"
                       />
                     </div>
+                    <div>
+                      <label className="label">Codecs</label>
+                      <input
+                        type="text"
+                        value={formData.trunk_codecs}
+                        onChange={(e) => setFormData({ ...formData, trunk_codecs: e.target.value })}
+                        className="input"
+                      />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="label">Codecs</label>
+                  <div className="mt-4">
+                    <label className="label">Tech Prefix</label>
                     <input
                       type="text"
-                      value={formData.trunk_codecs}
-                      onChange={(e) => setFormData({ ...formData, trunk_codecs: e.target.value })}
+                      value={formData.tech_prefix}
+                      onChange={(e) => setFormData({ ...formData, tech_prefix: e.target.value })}
                       className="input"
+                      placeholder="Prefixo técnico (opcional)"
                     />
                   </div>
-                </>
+                </div>
               )}
 
-              <div>
-                <label className="label">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="input"
-                >
-                  <option value="active">Ativo</option>
-                  <option value="inactive">Inativo</option>
-                </select>
+              <div className="border-t border-dark-100 pt-4 mt-4">
+                <h3 className="text-white font-medium mb-4">Planos</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label flex items-center gap-2">
+                      <Route className="w-4 h-4 text-primary-400" />
+                      Plano de Rotas
+                    </label>
+                    <select
+                      value={formData.route_plan_id}
+                      onChange={(e) => setFormData({ ...formData, route_plan_id: e.target.value })}
+                      className="input"
+                    >
+                      <option value="">Selecione um plano</option>
+                      {routePlans?.filter(p => p.status === 'active').map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-emerald-400" />
+                      Plano de Tarifas
+                    </label>
+                    <select
+                      value={formData.tariff_plan_id}
+                      onChange={(e) => setFormData({ ...formData, tariff_plan_id: e.target.value })}
+                      className="input"
+                    >
+                      <option value="">Selecione um plano</option>
+                      {tariffPlans?.filter(p => p.status === 'active').map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">

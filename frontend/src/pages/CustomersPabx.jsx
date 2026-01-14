@@ -21,8 +21,10 @@ export default function CustomersPabx() {
   const [extensionForm, setExtensionForm] = useState({
     extension: '',
     name: '',
-    password: '',
+    secret: '',
+    callerid: '',
     context: 'from-internal',
+    nat_enabled: true,
     status: 'active'
   })
 
@@ -127,8 +129,10 @@ export default function CustomersPabx() {
       setExtensionForm({
         extension: extension.extension,
         name: extension.name,
-        password: '',
+        secret: '',
+        callerid: extension.callerid || '',
         context: extension.context || 'from-internal',
+        nat_enabled: extension.nat_enabled !== false,
         status: extension.status
       })
     } else {
@@ -136,8 +140,10 @@ export default function CustomersPabx() {
       setExtensionForm({
         extension: '',
         name: '',
-        password: '',
+        secret: '',
+        callerid: '',
         context: 'from-internal',
+        nat_enabled: true,
         status: 'active'
       })
     }
@@ -168,11 +174,11 @@ export default function CustomersPabx() {
     e.preventDefault()
     const data = {
       ...extensionForm,
-      customer_id: selectedCustomer.id
+      customer_id: selectedCustomer.id,
+      callerid: extensionForm.callerid || null
     }
     if (editingExtension) {
-      // Se senha vazia, não enviar
-      if (!data.password) delete data.password
+      if (!data.secret) delete data.secret
       updateExtensionMutation.mutate({ id: editingExtension.id, data })
     } else {
       createExtensionMutation.mutate(data)
@@ -202,7 +208,6 @@ export default function CustomersPabx() {
     return extensions?.filter(ext => ext.customer_id === customerId) || []
   }
 
-  // Filtrar apenas clientes extension (PABX)
   const pabxCustomers = customers?.filter(c => c.type === 'extension') || []
 
   if (isLoading) {
@@ -226,7 +231,6 @@ export default function CustomersPabx() {
         </button>
       </div>
 
-      {/* Lista de Clientes */}
       <div className="space-y-4">
         {pabxCustomers.map((customer) => {
           const customerExtensions = getCustomerExtensions(customer.id)
@@ -234,7 +238,6 @@ export default function CustomersPabx() {
 
           return (
             <div key={customer.id} className="card">
-              {/* Header do Cliente */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button
@@ -303,7 +306,6 @@ export default function CustomersPabx() {
                 </div>
               </div>
 
-              {/* Lista de Ramais */}
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-dark-100">
                   {customerExtensions.length > 0 ? (
@@ -313,7 +315,8 @@ export default function CustomersPabx() {
                           <tr className="text-left text-xs text-gray-500 uppercase">
                             <th className="pb-3 pl-4">Ramal</th>
                             <th className="pb-3">Nome</th>
-                            <th className="pb-3">Contexto</th>
+                            <th className="pb-3">Caller ID</th>
+                            <th className="pb-3">NAT</th>
                             <th className="pb-3">Status</th>
                             <th className="pb-3 pr-4">Ações</th>
                           </tr>
@@ -325,7 +328,18 @@ export default function CustomersPabx() {
                                 <span className="font-mono text-primary-400">{ext.extension}</span>
                               </td>
                               <td className="py-3 text-white">{ext.name}</td>
-                              <td className="py-3 text-gray-400">{ext.context}</td>
+                              <td className="py-3">
+                                {ext.callerid ? (
+                                  <span className="font-mono text-emerald-400">{ext.callerid}</span>
+                                ) : (
+                                  <span className="text-gray-500">-</span>
+                                )}
+                              </td>
+                              <td className="py-3">
+                                <span className={`badge text-xs ${ext.nat_enabled !== false ? 'badge-success' : 'badge-secondary'}`}>
+                                  {ext.nat_enabled !== false ? 'Sim' : 'Não'}
+                                </span>
+                              </td>
                               <td className="py-3">
                                 <span className={`badge text-xs ${ext.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
                                   {ext.status === 'active' ? 'Ativo' : 'Inativo'}
@@ -469,13 +483,40 @@ export default function CustomersPabx() {
                 <input type="text" value={extensionForm.name} onChange={(e) => setExtensionForm({ ...extensionForm, name: e.target.value })} className="input" placeholder="Nome do usuário" required />
               </div>
               <div>
+                <label className="label">Caller ID</label>
+                <input 
+                  type="text" 
+                  value={extensionForm.callerid} 
+                  onChange={(e) => setExtensionForm({ ...extensionForm, callerid: e.target.value })} 
+                  className="input" 
+                  placeholder='"Nome" <5511999999999>' 
+                />
+                <p className="text-xs text-gray-500 mt-1">Formato: "Nome" &lt;número&gt; ou apenas o número</p>
+              </div>
+              <div>
                 <label className="label">{editingExtension ? 'Nova Senha (deixe vazio para manter)' : 'Senha'}</label>
-                <input type="password" value={extensionForm.password} onChange={(e) => setExtensionForm({ ...extensionForm, password: e.target.value })} className="input" placeholder="••••••••" required={!editingExtension} />
+                <input type="password" value={extensionForm.secret} onChange={(e) => setExtensionForm({ ...extensionForm, secret: e.target.value })} className="input" placeholder="••••••••" required={!editingExtension} />
               </div>
               <div>
                 <label className="label">Contexto</label>
                 <input type="text" value={extensionForm.context} onChange={(e) => setExtensionForm({ ...extensionForm, context: e.target.value })} className="input" />
               </div>
+              
+              {/* NAT Checkbox */}
+              <div className="flex items-center gap-3 p-3 bg-dark-300 rounded-lg">
+                <input 
+                  type="checkbox" 
+                  id="nat_enabled"
+                  checked={extensionForm.nat_enabled} 
+                  onChange={(e) => setExtensionForm({ ...extensionForm, nat_enabled: e.target.checked })}
+                  className="w-5 h-5 rounded border-dark-100 text-primary-500 focus:ring-primary-500 focus:ring-offset-dark-400"
+                />
+                <div>
+                  <label htmlFor="nat_enabled" className="text-white font-medium cursor-pointer">Habilitar NAT</label>
+                  <p className="text-xs text-gray-500">Ative se o ramal estiver atrás de NAT/Firewall (recomendado para softphones)</p>
+                </div>
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={closeExtensionModal} className="btn-secondary flex-1">Cancelar</button>
                 <button type="submit" className="btn-primary flex-1">{editingExtension ? 'Salvar' : 'Criar'}</button>

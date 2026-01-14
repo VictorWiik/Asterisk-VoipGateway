@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, X, Server, Layers } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Server, Layers, Router } from 'lucide-react'
 import api from '../services/api'
 
 export default function GatewayGroups() {
@@ -147,14 +147,15 @@ export default function GatewayGroups() {
             <div className="mb-4">
               <p className="text-xs text-gray-500 mb-2">Gateways no grupo:</p>
               <div className="flex flex-wrap gap-2">
-                {group.gateways?.map((gw) => (
-                  <span key={gw.id} className="text-xs bg-dark-300 text-gray-300 px-2 py-1 rounded flex items-center gap-1">
-                    <Server className="w-3 h-3" />
-                    {gw.host}
-                  </span>
-                ))}
-                {(!group.gateways || group.gateways.length === 0) && (
-                  <span className="text-xs text-gray-500">Nenhum gateway</span>
+                {group.gateways?.length > 0 ? (
+                  group.gateways.map((gw) => (
+                    <span key={gw.id} className="text-xs bg-dark-300 text-gray-300 px-2 py-1 rounded flex items-center gap-1">
+                      <Router className="w-3 h-3 text-orange-400" />
+                      {gw.name} ({gw.ip_address})
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-500">Nenhum gateway associado</span>
                 )}
               </div>
             </div>

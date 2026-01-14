@@ -11,14 +11,11 @@ export default function Gateways() {
     description: '',
     ip_address: '',
     port: 5060,
-    protocol: 'udp',
-    username: '',
-    password: '',
+    tech_prefix: '',
     context: 'from-trunk',
     codecs: 'alaw,ulaw',
     provider_id: '',
     gateway_group_id: '',
-    direction: 'both',
     status: 'active'
   })
 
@@ -71,16 +68,13 @@ export default function Gateways() {
       setFormData({
         name: gateway.name,
         description: gateway.description || '',
-        ip_address: gateway.ip_address,
+        ip_address: gateway.ip_address || '',
         port: gateway.port || 5060,
-        protocol: gateway.protocol || 'udp',
-        username: gateway.username || '',
-        password: gateway.password || '',
+        tech_prefix: gateway.tech_prefix || '',
         context: gateway.context || 'from-trunk',
         codecs: gateway.codecs || 'alaw,ulaw',
         provider_id: gateway.provider_id || '',
         gateway_group_id: gateway.gateway_group_id || '',
-        direction: gateway.direction || 'both',
         status: gateway.status
       })
     } else {
@@ -90,14 +84,11 @@ export default function Gateways() {
         description: '',
         ip_address: '',
         port: 5060,
-        protocol: 'udp',
-        username: '',
-        password: '',
+        tech_prefix: '',
         context: 'from-trunk',
         codecs: 'alaw,ulaw',
         provider_id: '',
         gateway_group_id: '',
-        direction: 'both',
         status: 'active'
       })
     }
@@ -114,7 +105,8 @@ export default function Gateways() {
     const data = {
       ...formData,
       provider_id: formData.provider_id || null,
-      gateway_group_id: formData.gateway_group_id || null
+      gateway_group_id: formData.gateway_group_id || null,
+      tech_prefix: formData.tech_prefix || null
     }
     if (editingGateway) {
       updateMutation.mutate({ id: editingGateway.id, data })
@@ -132,6 +124,11 @@ export default function Gateways() {
   const getGroupName = (groupId) => {
     const group = gatewayGroups?.find(g => g.id === groupId)
     return group ? group.name : '-'
+  }
+
+  const getProviderName = (providerId) => {
+    const provider = providers?.find(p => p.id === providerId)
+    return provider ? provider.name : '-'
   }
 
   if (isLoading) {
@@ -161,10 +158,10 @@ export default function Gateways() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Host</th>
-                <th>Porta</th>
+                <th>Host / IP</th>
+                <th>Tech Prefix</th>
                 <th>Grupo</th>
-                <th>Direção</th>
+                <th>Provedor</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
@@ -177,11 +174,22 @@ export default function Gateways() {
                       <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
                         <Router className="w-4 h-4 text-orange-400" />
                       </div>
-                      <span className="text-white">{gateway.name}</span>
+                      <div>
+                        <span className="text-white">{gateway.name}</span>
+                        {gateway.description && (
+                          <p className="text-xs text-gray-500">{gateway.description}</p>
+                        )}
+                      </div>
                     </div>
                   </td>
-                  <td><span className="font-mono text-gray-300">{gateway.ip_address}</span></td>
-                  <td><span className="text-gray-300">{gateway.port}</span></td>
+                  <td><span className="font-mono text-gray-300">{gateway.ip_address}:{gateway.port}</span></td>
+                  <td>
+                    {gateway.tech_prefix ? (
+                      <span className="font-mono text-primary-400">{gateway.tech_prefix}</span>
+                    ) : (
+                      <span className="text-gray-500">-</span>
+                    )}
+                  </td>
                   <td>
                     {gateway.gateway_group_id ? (
                       <div className="flex items-center gap-2">
@@ -191,9 +199,7 @@ export default function Gateways() {
                     ) : (<span className="text-gray-500">-</span>)}
                   </td>
                   <td>
-                    <span className={`badge ${gateway.direction === 'inbound' ? 'badge-info' : gateway.direction === 'outbound' ? 'badge-warning' : 'badge-secondary'}`}>
-                      {gateway.direction === 'inbound' ? 'Entrada' : gateway.direction === 'outbound' ? 'Saída' : 'Ambos'}
-                    </span>
+                    <span className="text-gray-300">{getProviderName(gateway.provider_id)}</span>
                   </td>
                   <td>
                     <span className={`badge ${gateway.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
@@ -255,35 +261,11 @@ export default function Gateways() {
                   <input type="number" value={formData.port} onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })} className="input" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="label">Protocolo</label>
-                  <select value={formData.protocol} onChange={(e) => setFormData({ ...formData, protocol: e.target.value })} className="input">
-                    <option value="udp">UDP</option>
-                    <option value="tcp">TCP</option>
-                    <option value="tls">TLS</option>
-                  </select>
+                  <label className="label">Tech Prefix</label>
+                  <input type="text" value={formData.tech_prefix} onChange={(e) => setFormData({ ...formData, tech_prefix: e.target.value })} className="input" placeholder="Ex: 0XX#" />
                 </div>
-                <div>
-                  <label className="label">Direção</label>
-                  <select value={formData.direction} onChange={(e) => setFormData({ ...formData, direction: e.target.value })} className="input">
-                    <option value="both">Entrada e Saída</option>
-                    <option value="inbound">Apenas Entrada</option>
-                    <option value="outbound">Apenas Saída</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Usuário (opcional)</label>
-                  <input type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="input" placeholder="usuario" />
-                </div>
-                <div>
-                  <label className="label">Senha (opcional)</label>
-                  <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="input" placeholder="••••••••" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Contexto</label>
                   <input type="text" value={formData.context} onChange={(e) => setFormData({ ...formData, context: e.target.value })} className="input" />
