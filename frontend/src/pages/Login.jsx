@@ -1,13 +1,16 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
-import { auth } from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 
-export default function Login({ onLogin }) {
+export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -15,9 +18,8 @@ export default function Login({ onLogin }) {
     setLoading(true)
 
     try {
-      const response = await auth.login({ username, password })
-      localStorage.setItem('token', response.data.access_token)
-      onLogin()
+      await login(username, password)
+      navigate('/dashboard')
     } catch (err) {
       setError(err.response?.data?.detail || 'Erro ao fazer login')
     } finally {
@@ -27,17 +29,14 @@ export default function Login({ onLogin }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-500 px-4">
-      {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-600/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary-600/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 via-purple-500 to-violet-600 rounded-2xl mb-4 shadow-lg shadow-primary-500/25 relative">
-            {/* Flow Lines Icon */}
             <div className="absolute inset-0 flex flex-col justify-center items-start pl-3 gap-1">
               <div className="w-5 h-0.5 bg-white/90 rounded"></div>
               <div className="w-7 h-0.5 bg-white/90 rounded ml-2"></div>
@@ -49,7 +48,6 @@ export default function Login({ onLogin }) {
           <p className="text-gray-500 mt-1">VoIP Management System</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="card space-y-6">
           <div>
             <label className="label">Usuario</label>

@@ -11,7 +11,9 @@ import {
   Upload,
   Link,
   Unlink,
-  User
+  User,
+  Layers,
+  Router
 } from 'lucide-react'
 import api, { dids, providers, customers } from '../services/api'
 
@@ -34,23 +36,28 @@ function Modal({ isOpen, onClose, title, children }) {
   )
 }
 
-function DIDForm({ did, providersList, gatewaysList, onSubmit, onCancel, loading }) {
+function DIDForm({ did, providersList, gatewaysList, gatewayGroupsList, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState({
     number: did?.number || '',
     provider_id: did?.provider_id || '',
     gateway_id: did?.gateway_id || '',
+    gateway_group_id: did?.gateway_group_id || '',
     city: did?.city || '',
     state: did?.state || '',
     country: did?.country || 'Brasil',
     monthly_cost: did?.monthly_cost || 0,
   })
 
+  // Determina se usa grupo ou gateway individual
+  const [useGroup, setUseGroup] = useState(did?.gateway_group_id ? true : false)
+
   const handleSubmit = (e) => {
     e.preventDefault()
     onSubmit({
       ...form,
       provider_id: form.provider_id || null,
-      gateway_id: form.gateway_id || null,
+      gateway_id: useGroup ? null : (form.gateway_id || null),
+      gateway_group_id: useGroup ? (form.gateway_group_id || null) : null,
     })
   }
 
@@ -70,7 +77,7 @@ function DIDForm({ did, providersList, gatewaysList, onSubmit, onCancel, loading
           />
         </div>
 
-        <div>
+        <div className="col-span-2">
           <label className="label">Provedor</label>
           <select
             value={form.provider_id}
@@ -84,20 +91,66 @@ function DIDForm({ did, providersList, gatewaysList, onSubmit, onCancel, loading
           </select>
         </div>
 
-        <div>
-          <label className="label">Gateway Entrada</label>
-          <select
-            value={form.gateway_id}
-            onChange={(e) => setForm({ ...form, gateway_id: e.target.value })}
-            className="select"
-            required
-          >
-            <option value="">Selecione...</option>
-            {gatewaysList?.map(g => (
-              <option key={g.id} value={g.id}>{g.name} ({g.ip_address})</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">Por qual gateway a chamada entra</p>
+        {/* Seletor de Modo: Grupo ou Gateway Individual */}
+        <div className="col-span-2">
+          <label className="label">Entrada de Chamadas</label>
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setUseGroup(true)}
+              className={`flex-1 py-2 px-4 rounded-lg border transition-colors flex items-center justify-center gap-2 ${
+                useGroup 
+                  ? 'bg-primary-500/20 border-primary-500 text-primary-400' 
+                  : 'border-dark-100 text-gray-400 hover:border-gray-500'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              Grupo de Gateways
+            </button>
+            <button
+              type="button"
+              onClick={() => setUseGroup(false)}
+              className={`flex-1 py-2 px-4 rounded-lg border transition-colors flex items-center justify-center gap-2 ${
+                !useGroup 
+                  ? 'bg-primary-500/20 border-primary-500 text-primary-400' 
+                  : 'border-dark-100 text-gray-400 hover:border-gray-500'
+              }`}
+            >
+              <Router className="w-4 h-4" />
+              Gateway Individual
+            </button>
+          </div>
+
+          {useGroup ? (
+            <select
+              value={form.gateway_group_id}
+              onChange={(e) => setForm({ ...form, gateway_group_id: e.target.value })}
+              className="select"
+              required
+            >
+              <option value="">Selecione um grupo...</option>
+              {gatewayGroupsList?.filter(g => g.status === 'active').map(g => (
+                <option key={g.id} value={g.id}>{g.name} ({g.gateways?.length || 0} gateways)</option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={form.gateway_id}
+              onChange={(e) => setForm({ ...form, gateway_id: e.target.value })}
+              className="select"
+              required
+            >
+              <option value="">Selecione um gateway...</option>
+              {gatewaysList?.filter(g => g.status === 'active').map(g => (
+                <option key={g.id} value={g.id}>{g.name} ({g.ip_address})</option>
+              ))}
+            </select>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            {useGroup 
+              ? 'Aceita chamadas de qualquer gateway do grupo' 
+              : 'Aceita chamadas apenas deste gateway específico'}
+          </p>
         </div>
 
         <div>
@@ -157,14 +210,16 @@ function DIDForm({ did, providersList, gatewaysList, onSubmit, onCancel, loading
   )
 }
 
-function ImportForm({ providersList, gatewaysList, onSubmit, onCancel, loading }) {
+function ImportForm({ providersList, gatewaysList, gatewayGroupsList, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState({
     numbers: '',
     provider_id: '',
     gateway_id: '',
+    gateway_group_id: '',
     city: '',
     state: '',
   })
+  const [useGroup, setUseGroup] = useState(true)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -172,11 +227,12 @@ function ImportForm({ providersList, gatewaysList, onSubmit, onCancel, loading }
       .split('\n')
       .map(n => n.trim())
       .filter(n => n.length > 0)
-    
+
     onSubmit({
       numbers,
       provider_id: form.provider_id || null,
-      gateway_id: form.gateway_id || null,
+      gateway_id: useGroup ? null : (form.gateway_id || null),
+      gateway_group_id: useGroup ? (form.gateway_group_id || null) : null,
       city: form.city,
       state: form.state,
     })
@@ -190,14 +246,14 @@ function ImportForm({ providersList, gatewaysList, onSubmit, onCancel, loading }
           value={form.numbers}
           onChange={(e) => setForm({ ...form, numbers: e.target.value })}
           className="input font-mono"
-          rows={8}
+          rows={6}
           placeholder="5511999999999&#10;5511988888888&#10;5511977777777"
           required
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
+        <div className="col-span-2">
           <label className="label">Provedor</label>
           <select
             value={form.provider_id}
@@ -211,18 +267,58 @@ function ImportForm({ providersList, gatewaysList, onSubmit, onCancel, loading }
           </select>
         </div>
 
-        <div>
-          <label className="label">Gateway Entrada</label>
-          <select
-            value={form.gateway_id}
-            onChange={(e) => setForm({ ...form, gateway_id: e.target.value })}
-            className="select"
-          >
-            <option value="">Selecione...</option>
-            {gatewaysList?.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
+        <div className="col-span-2">
+          <label className="label">Entrada de Chamadas</label>
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setUseGroup(true)}
+              className={`flex-1 py-2 px-3 rounded-lg border transition-colors flex items-center justify-center gap-2 text-sm ${
+                useGroup 
+                  ? 'bg-primary-500/20 border-primary-500 text-primary-400' 
+                  : 'border-dark-100 text-gray-400 hover:border-gray-500'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              Grupo
+            </button>
+            <button
+              type="button"
+              onClick={() => setUseGroup(false)}
+              className={`flex-1 py-2 px-3 rounded-lg border transition-colors flex items-center justify-center gap-2 text-sm ${
+                !useGroup 
+                  ? 'bg-primary-500/20 border-primary-500 text-primary-400' 
+                  : 'border-dark-100 text-gray-400 hover:border-gray-500'
+              }`}
+            >
+              <Router className="w-4 h-4" />
+              Gateway
+            </button>
+          </div>
+
+          {useGroup ? (
+            <select
+              value={form.gateway_group_id}
+              onChange={(e) => setForm({ ...form, gateway_group_id: e.target.value })}
+              className="select"
+            >
+              <option value="">Selecione um grupo...</option>
+              {gatewayGroupsList?.filter(g => g.status === 'active').map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={form.gateway_id}
+              onChange={(e) => setForm({ ...form, gateway_id: e.target.value })}
+              className="select"
+            >
+              <option value="">Selecione...</option>
+              {gatewaysList?.filter(g => g.status === 'active').map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div>
@@ -359,7 +455,6 @@ export default function DIDs() {
   const [statusFilter, setStatusFilter] = useState('')
   const queryClient = useQueryClient()
 
-  // Usa o novo endpoint com alocacao
   const { data: didsList, isLoading } = useQuery({
     queryKey: ['dids-with-allocation', statusFilter],
     queryFn: () => api.get('/dids/with-allocation', { params: { status_filter: statusFilter || undefined } }).then(res => res.data),
@@ -378,6 +473,11 @@ export default function DIDs() {
   const { data: gatewaysList } = useQuery({
     queryKey: ['gateways'],
     queryFn: () => api.get('/gateways/').then(res => res.data),
+  })
+
+  const { data: gatewayGroupsList } = useQuery({
+    queryKey: ['gateway-groups'],
+    queryFn: () => api.get('/gateway-groups/').then(res => res.data),
   })
 
   const { data: customersList } = useQuery({
@@ -467,6 +567,18 @@ export default function DIDs() {
     if (confirm('Tem certeza que deseja desalocar este DID?')) {
       deallocateMutation.mutate(id)
     }
+  }
+
+  // Função para obter nome do gateway ou grupo
+  const getGatewayInfo = (did) => {
+    if (did.gateway_group_id) {
+      const group = gatewayGroupsList?.find(g => g.id === did.gateway_group_id)
+      return group ? { name: group.name, type: 'group' } : null
+    }
+    if (did.gateway_name) {
+      return { name: did.gateway_name, type: 'gateway' }
+    }
+    return null
   }
 
   const filteredDIDs = didsList?.filter(d =>
@@ -572,7 +684,7 @@ export default function DIDs() {
             <thead>
               <tr>
                 <th>Numero</th>
-                <th>Gateway</th>
+                <th>Gateway/Grupo</th>
                 <th>Localidade</th>
                 <th>Cliente</th>
                 <th>Destino</th>
@@ -581,87 +693,101 @@ export default function DIDs() {
               </tr>
             </thead>
             <tbody>
-              {filteredDIDs.map((did) => (
-                <tr key={did.id}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center">
-                        <Phone className="w-5 h-5 text-primary-400" />
-                      </div>
-                      <span className="font-mono font-medium text-white">{did.number}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="text-sm">{did.gateway_name || '-'}</span>
-                  </td>
-                  <td>
-                    {did.city && did.state ? `${did.city}/${did.state}` : did.city || did.state || '-'}
-                  </td>
-                  <td>
-                    {did.customer_name ? (
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-emerald-400" />
-                        <div>
-                          <p className="text-sm text-white">{did.customer_name}</p>
-                          <p className="text-xs text-gray-500">{did.customer_code}</p>
+              {filteredDIDs.map((did) => {
+                const gwInfo = getGatewayInfo(did)
+                return (
+                  <tr key={did.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center">
+                          <Phone className="w-5 h-5 text-primary-400" />
                         </div>
+                        <span className="font-mono font-medium text-white">{did.number}</span>
                       </div>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </td>
-                  <td>
-                    {did.destination ? (
-                      <span className="font-mono text-sm text-emerald-400">{did.destination}</span>
-                    ) : did.status === 'allocated' ? (
-                      <span className="text-xs text-gray-500">Original</span>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge ${statusLabels[did.status]?.class || 'badge-info'}`}>
-                      {statusLabels[did.status]?.label || did.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      {did.status === 'available' && (
-                        <button
-                          onClick={() => handleAllocate(did)}
-                          className="p-2 hover:bg-emerald-500/20 rounded-lg transition-colors"
-                          title="Alocar"
-                        >
-                          <Link className="w-4 h-4 text-emerald-400" />
-                        </button>
+                    </td>
+                    <td>
+                      {gwInfo ? (
+                        <div className="flex items-center gap-2">
+                          {gwInfo.type === 'group' ? (
+                            <Layers className="w-4 h-4 text-orange-400" />
+                          ) : (
+                            <Router className="w-4 h-4 text-blue-400" />
+                          )}
+                          <span className="text-sm">{gwInfo.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">-</span>
                       )}
-                      {did.status === 'allocated' && (
-                        <button
-                          onClick={() => handleDeallocate(did.id)}
-                          className="p-2 hover:bg-amber-500/20 rounded-lg transition-colors"
-                          title="Desalocar"
-                        >
-                          <Unlink className="w-4 h-4 text-amber-400" />
-                        </button>
+                    </td>
+                    <td>
+                      {did.city && did.state ? `${did.city}/${did.state}` : did.city || did.state || '-'}
+                    </td>
+                    <td>
+                      {did.customer_name ? (
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-emerald-400" />
+                          <div>
+                            <p className="text-sm text-white">{did.customer_name}</p>
+                            <p className="text-xs text-gray-500">{did.customer_code}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">-</span>
                       )}
-                      <button
-                        onClick={() => handleEdit(did)}
-                        className="p-2 hover:bg-dark-300 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 className="w-4 h-4 text-gray-400" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(did.id)}
-                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-400" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      {did.destination ? (
+                        <span className="font-mono text-sm text-emerald-400">{did.destination}</span>
+                      ) : did.status === 'allocated' ? (
+                        <span className="text-xs text-gray-500">Original</span>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${statusLabels[did.status]?.class || 'badge-info'}`}>
+                        {statusLabels[did.status]?.label || did.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        {did.status === 'available' && (
+                          <button
+                            onClick={() => handleAllocate(did)}
+                            className="p-2 hover:bg-emerald-500/20 rounded-lg transition-colors"
+                            title="Alocar"
+                          >
+                            <Link className="w-4 h-4 text-emerald-400" />
+                          </button>
+                        )}
+                        {did.status === 'allocated' && (
+                          <button
+                            onClick={() => handleDeallocate(did.id)}
+                            className="p-2 hover:bg-amber-500/20 rounded-lg transition-colors"
+                            title="Desalocar"
+                          >
+                            <Unlink className="w-4 h-4 text-amber-400" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleEdit(did)}
+                          className="p-2 hover:bg-dark-300 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4 text-gray-400" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(did.id)}
+                          className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
 
@@ -686,6 +812,7 @@ export default function DIDs() {
           did={editingDID}
           providersList={providersList}
           gatewaysList={gatewaysList}
+          gatewayGroupsList={gatewayGroupsList}
           onSubmit={handleSubmit}
           onCancel={() => {
             setIsModalOpen(false)
@@ -704,6 +831,7 @@ export default function DIDs() {
         <ImportForm
           providersList={providersList}
           gatewaysList={gatewaysList}
+          gatewayGroupsList={gatewayGroupsList}
           onSubmit={(data) => importMutation.mutate(data)}
           onCancel={() => setIsImportModalOpen(false)}
           loading={importMutation.isPending}

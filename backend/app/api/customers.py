@@ -10,11 +10,27 @@ from datetime import datetime
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.customer import Customer
+from app.models.route_plan import RoutePlan
+from app.models.tariff_plan import TariffPlan
 from app.services.asterisk import AsteriskService
 
 router = APIRouter()
 
 # Schemas
+class RoutePlanInfo(BaseModel):
+    id: UUID
+    name: str
+    
+    class Config:
+        from_attributes = True
+
+class TariffPlanInfo(BaseModel):
+    id: UUID
+    name: str
+    
+    class Config:
+        from_attributes = True
+
 class CustomerBase(BaseModel):
     code: str
     name: str
@@ -24,13 +40,15 @@ class CustomerBase(BaseModel):
     trunk_context: Optional[str] = "from-trunk"
     trunk_codecs: Optional[str] = "alaw,ulaw"
     tech_prefix: Optional[str] = None
-    plan_id: Optional[UUID] = None
+    route_plan_id: Optional[UUID] = None
+    tariff_plan_id: Optional[UUID] = None
     status: Optional[str] = "active"
 
 class CustomerCreate(CustomerBase):
     pass
 
 class CustomerUpdate(BaseModel):
+    code: Optional[str] = None
     name: Optional[str] = None
     type: Optional[str] = None
     trunk_ip: Optional[str] = None
@@ -38,13 +56,16 @@ class CustomerUpdate(BaseModel):
     trunk_context: Optional[str] = None
     trunk_codecs: Optional[str] = None
     tech_prefix: Optional[str] = None
-    plan_id: Optional[UUID] = None
+    route_plan_id: Optional[UUID] = None
+    tariff_plan_id: Optional[UUID] = None
     status: Optional[str] = None
 
 class CustomerResponse(CustomerBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    route_plan: Optional[RoutePlanInfo] = None
+    tariff_plan: Optional[TariffPlanInfo] = None
 
     class Config:
         from_attributes = True
@@ -54,16 +75,16 @@ class CustomerResponse(CustomerBase):
 async def list_customers(
     skip: int = 0,
     limit: int = 100,
-    search: Optional[str] = None,
+    status: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    query = select(Customer)
-    if search:
-        query = query.where(
-            (Customer.name.ilike(f"%{search}%")) | 
-            (Customer.code.ilike(f"%{search}%"))
-        )
+    query = select(Customer).options(
+        selectinload(Customer.route_plan),
+        selectinload(Customer.tariff_plan)
+    )
+    if status:
+        query = query.where(Customer.status == status)
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
@@ -74,7 +95,10 @@ async def get_customer(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    query = select(Customer).where(Customer.id == customer_id)
+    query = select(Customer).options(
+        selectinload(Customer.route_plan),
+        selectinload(Customer.tariff_plan)
+    ).where(Customer.id == customer_id)
     result = await db.execute(query)
     customer = result.scalar_one_or_none()
     if not customer:
@@ -98,15 +122,20 @@ async def create_customer(
     await db.commit()
     await db.refresh(customer)
 
-    # Sync com Asterisk se for trunk
-    if customer.type == "trunk" and customer.trunk_ip:
-        try:
-            asterisk = AsteriskService()
-            await asterisk.sync_customer_trunks(db)
-        except Exception as e:
-            print(f"Erro ao sincronizar com Asterisk: {e}")
+    # Sync com Asterisk
+    try:
+        asterisk = AsteriskService()
+        await asterisk.sync_customer_trunks(db)
+    except Exception as e:
+        print(f"Erro ao sincronizar com Asterisk: {e}")
 
-    return customer
+    # Recarregar com relacionamentos
+    query = select(Customer).options(
+        selectinload(Customer.route_plan),
+        selectinload(Customer.tariff_plan)
+    ).where(Customer.id == customer.id)
+    result = await db.execute(query)
+    return result.scalar_one()
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
 async def update_customer(
@@ -118,7 +147,7 @@ async def update_customer(
     query = select(Customer).where(Customer.id == customer_id)
     result = await db.execute(query)
     customer = result.scalar_one_or_none()
-    
+
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
@@ -127,17 +156,21 @@ async def update_customer(
         setattr(customer, field, value)
 
     await db.commit()
-    await db.refresh(customer)
 
-    # Sync com Asterisk se for trunk
-    if customer.type == "trunk":
-        try:
-            asterisk = AsteriskService()
-            await asterisk.sync_customer_trunks(db)
-        except Exception as e:
-            print(f"Erro ao sincronizar com Asterisk: {e}")
+    # Sync com Asterisk
+    try:
+        asterisk = AsteriskService()
+        await asterisk.sync_customer_trunks(db)
+    except Exception as e:
+        print(f"Erro ao sincronizar com Asterisk: {e}")
 
-    return customer
+    # Recarregar com relacionamentos
+    query = select(Customer).options(
+        selectinload(Customer.route_plan),
+        selectinload(Customer.tariff_plan)
+    ).where(Customer.id == customer.id)
+    result = await db.execute(query)
+    return result.scalar_one()
 
 @router.delete("/{customer_id}")
 async def delete_customer(
@@ -148,7 +181,7 @@ async def delete_customer(
     query = select(Customer).where(Customer.id == customer_id)
     result = await db.execute(query)
     customer = result.scalar_one_or_none()
-    
+
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 

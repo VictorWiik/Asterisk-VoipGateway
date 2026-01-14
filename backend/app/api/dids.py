@@ -1,11 +1,14 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models import DID, CustomerDID, Customer, User
+from app.models.gateway import Gateway
+from app.models.gateway_group import GatewayGroup
 from app.schemas import DIDCreate, DIDUpdate, DIDResponse, DIDImport, CustomerDIDCreate, CustomerDIDResponse
 from app.services.asterisk import asterisk_service
 
@@ -14,17 +17,15 @@ router = APIRouter()
 
 async def sync_dids_to_asterisk(db: AsyncSession):
     """Sincroniza DIDs com o Asterisk"""
-    # Busca DIDs alocados
     dids_result = await db.execute(
         select(DID, CustomerDID)
         .outerjoin(CustomerDID, DID.id == CustomerDID.did_id)
     )
     dids_with_alloc = dids_result.all()
-    
-    # Busca clientes
+
     customers_result = await db.execute(select(Customer))
     customers = customers_result.scalars().all()
-    
+
     dids_data = []
     for did, alloc in dids_with_alloc:
         dids_data.append({
@@ -34,7 +35,7 @@ async def sync_dids_to_asterisk(db: AsyncSession):
             "destination": alloc.destination if alloc else None,
             "destination_type": alloc.destination_type if alloc else None,
         })
-    
+
     customers_data = [
         {
             "id": str(c.id),
@@ -46,12 +47,10 @@ async def sync_dids_to_asterisk(db: AsyncSession):
         }
         for c in customers
     ]
-    
+
     success = await asterisk_service.save_inbound_dids_config(dids_data, customers_data)
-    
     if success:
         await asterisk_service.reload_dialplan()
-    
     return success
 
 
@@ -66,13 +65,10 @@ async def list_dids(
 ):
     """Lista todos os DIDs"""
     query = select(DID)
-    
     if status_filter:
         query = query.where(DID.status == status_filter)
-    
     if provider_id:
         query = query.where(DID.provider_id == provider_id)
-    
     result = await db.execute(query.offset(skip).limit(limit).order_by(DID.number))
     return result.scalars().all()
 
@@ -86,29 +82,31 @@ async def list_dids_with_allocation(
     current_user: User = Depends(get_current_user)
 ):
     """Lista DIDs com informações de alocação"""
-    from app.models import Gateway
-    
-    query = select(DID, CustomerDID, Customer, Gateway).outerjoin(
+    query = select(DID, CustomerDID, Customer, Gateway, GatewayGroup).outerjoin(
         CustomerDID, DID.id == CustomerDID.did_id
     ).outerjoin(
         Customer, CustomerDID.customer_id == Customer.id
     ).outerjoin(
         Gateway, DID.gateway_id == Gateway.id
+    ).outerjoin(
+        GatewayGroup, DID.gateway_group_id == GatewayGroup.id
     )
-    
+
     if status_filter:
         query = query.where(DID.status == status_filter)
-    
+
     result = await db.execute(query.offset(skip).limit(limit).order_by(DID.number))
-    
+
     dids_list = []
-    for did, alloc, customer, gateway in result.all():
+    for did, alloc, customer, gateway, gateway_group in result.all():
         dids_list.append({
             "id": str(did.id),
             "number": did.number,
             "provider_id": str(did.provider_id) if did.provider_id else None,
             "gateway_id": str(did.gateway_id) if did.gateway_id else None,
             "gateway_name": gateway.name if gateway else None,
+            "gateway_group_id": str(did.gateway_group_id) if did.gateway_group_id else None,
+            "gateway_group_name": gateway_group.name if gateway_group else None,
             "city": did.city,
             "state": did.state,
             "country": did.country,
@@ -121,7 +119,7 @@ async def list_dids_with_allocation(
             "destination": alloc.destination if alloc else None,
             "destination_type": alloc.destination_type if alloc else None,
         })
-    
+
     return dids_list
 
 
@@ -135,7 +133,6 @@ async def get_dids_summary(
         select(DID.status, func.count(DID.id).label('total'))
         .group_by(DID.status)
     )
-    
     summary = {row.status: row.total for row in result.all()}
     return summary
 
@@ -149,10 +146,8 @@ async def get_did(
     """Obtém um DID pelo ID"""
     result = await db.execute(select(DID).where(DID.id == did_id))
     did = result.scalar_one_or_none()
-    
     if not did:
         raise HTTPException(status_code=404, detail="DID não encontrado")
-    
     return did
 
 
@@ -163,11 +158,9 @@ async def create_did(
     current_user: User = Depends(get_current_user)
 ):
     """Cria um novo DID"""
-    # Verifica se número já existe
     result = await db.execute(select(DID).where(DID.number == data.number))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Número de DID já existe")
-    
     did = DID(**data.model_dump())
     db.add(did)
     await db.commit()
@@ -184,25 +177,26 @@ async def import_dids(
     """Importa múltiplos DIDs"""
     imported = 0
     duplicated = 0
-    
+
     for number in data.numbers:
-        # Verifica se já existe
         result = await db.execute(select(DID).where(DID.number == number))
         if result.scalar_one_or_none():
             duplicated += 1
             continue
-        
+
         did = DID(
             number=number,
             provider_id=data.provider_id,
+            gateway_id=data.gateway_id,
+            gateway_group_id=data.gateway_group_id,
             city=data.city,
             state=data.state
         )
         db.add(did)
         imported += 1
-    
+
     await db.commit()
-    
+
     return {
         "imported": imported,
         "duplicated": duplicated,
@@ -220,19 +214,15 @@ async def update_did(
     """Atualiza um DID"""
     result = await db.execute(select(DID).where(DID.id == did_id))
     did = result.scalar_one_or_none()
-    
     if not did:
         raise HTTPException(status_code=404, detail="DID não encontrado")
-    
+
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(did, field, value)
-    
+
     await db.commit()
     await db.refresh(did)
-    
-    # Sincroniza com Asterisk
     await sync_dids_to_asterisk(db)
-    
     return did
 
 
@@ -245,20 +235,12 @@ async def delete_did(
     """Remove um DID"""
     result = await db.execute(select(DID).where(DID.id == did_id))
     did = result.scalar_one_or_none()
-    
     if not did:
         raise HTTPException(status_code=404, detail="DID não encontrado")
-    
     await db.delete(did)
     await db.commit()
-    
-    # Sincroniza com Asterisk
     await sync_dids_to_asterisk(db)
 
-
-# ============================================
-# ALOCAÇÃO DE DIDs
-# ============================================
 
 @router.post("/{did_id}/allocate", response_model=CustomerDIDResponse)
 async def allocate_did(
@@ -268,17 +250,13 @@ async def allocate_did(
     current_user: User = Depends(get_current_user)
 ):
     """Aloca um DID para um cliente"""
-    # Verifica DID
     result = await db.execute(select(DID).where(DID.id == did_id))
     did = result.scalar_one_or_none()
-    
     if not did:
         raise HTTPException(status_code=404, detail="DID não encontrado")
-    
     if did.status != "available":
         raise HTTPException(status_code=400, detail="DID não está disponível")
-    
-    # Cria alocação
+
     customer_did = CustomerDID(
         customer_id=data.customer_id,
         did_id=did_id,
@@ -286,17 +264,11 @@ async def allocate_did(
         destination=data.destination,
         monthly_price=data.monthly_price
     )
-    
-    # Atualiza status do DID
     did.status = "allocated"
-    
     db.add(customer_did)
     await db.commit()
     await db.refresh(customer_did)
-    
-    # Sincroniza com Asterisk
     await sync_dids_to_asterisk(db)
-    
     return customer_did
 
 
@@ -307,23 +279,18 @@ async def deallocate_did(
     current_user: User = Depends(get_current_user)
 ):
     """Desaloca um DID de um cliente"""
-    # Verifica alocação
     result = await db.execute(select(CustomerDID).where(CustomerDID.did_id == did_id))
     customer_did = result.scalar_one_or_none()
-    
     if not customer_did:
         raise HTTPException(status_code=404, detail="DID não está alocado")
-    
-    # Atualiza status do DID
+
     did_result = await db.execute(select(DID).where(DID.id == did_id))
     did = did_result.scalar_one_or_none()
     if did:
         did.status = "available"
-    
+
     await db.delete(customer_did)
     await db.commit()
-    
-    # Sincroniza com Asterisk
     await sync_dids_to_asterisk(db)
 
 
@@ -334,7 +301,6 @@ async def sync_dids(
 ):
     """Força sincronização dos DIDs com o Asterisk"""
     success = await sync_dids_to_asterisk(db)
-    
     if success:
         return {"message": "Sincronização realizada com sucesso"}
     else:

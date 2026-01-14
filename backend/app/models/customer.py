@@ -14,20 +14,24 @@ class Customer(Base):
     name = Column(String(200), nullable=False)
     type = Column(String(20), default="trunk")
     
+    # Campos para tipo trunk
     trunk_ip = Column(String(50))
     trunk_port = Column(Integer, default=5060)
     trunk_context = Column(String(50), default="from-trunk")
     trunk_codecs = Column(String(100), default="alaw,ulaw")
     tech_prefix = Column(String(20))
     
-    plan_id = Column(UUID(as_uuid=True), ForeignKey('plans.id'))
+    # Planos associados
+    route_plan_id = Column(UUID(as_uuid=True), ForeignKey('route_plans.id', ondelete='SET NULL'))
+    tariff_plan_id = Column(UUID(as_uuid=True), ForeignKey('tariff_plans.id', ondelete='SET NULL'))
     
     status = Column(String(20), default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relacionamentos
-    plan = relationship("Plan", back_populates="customers")
+    route_plan = relationship("RoutePlan", back_populates="customers")
+    tariff_plan = relationship("TariffPlan", back_populates="customers")
     extensions = relationship("Extension", back_populates="customer")
     customer_dids = relationship("CustomerDID", back_populates="customer")
     customer_routes = relationship("CustomerRoute", back_populates="customer")

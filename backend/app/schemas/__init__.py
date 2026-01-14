@@ -56,7 +56,7 @@ class UserResponse(UserBase):
 class ProviderBase(BaseModel):
     name: str
     description: Optional[str] = None
-    type: str  # fixo, movel, ldi, misto
+    type: str
     ip_address: str
     port: int = 5060
     tech_prefix: Optional[str] = None
@@ -187,7 +187,7 @@ class RouteResponse(RouteBase):
 class CustomerBase(BaseModel):
     code: str
     name: str
-    type: str = "extension"  # extension, trunk
+    type: str = "extension"
     document: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
@@ -196,7 +196,6 @@ class CustomerBase(BaseModel):
     credit_limit: Decimal = Decimal("0")
     max_channels: int = 10
     notes: Optional[str] = None
-    # Campos trunk
     trunk_ip: Optional[str] = None
     trunk_port: int = 5060
     trunk_codecs: str = "alaw,ulaw"
@@ -223,7 +222,6 @@ class CustomerUpdate(BaseModel):
     max_channels: Optional[int] = None
     status: Optional[str] = None
     notes: Optional[str] = None
-    # Campos trunk
     trunk_ip: Optional[str] = None
     trunk_port: Optional[int] = None
     trunk_codecs: Optional[str] = None
@@ -251,6 +249,7 @@ class DIDBase(BaseModel):
     number: str
     provider_id: Optional[UUID] = None
     gateway_id: Optional[UUID] = None
+    gateway_group_id: Optional[UUID] = None
     city: Optional[str] = None
     state: Optional[str] = None
     country: str = "Brasil"
@@ -264,6 +263,7 @@ class DIDCreate(DIDBase):
 class DIDUpdate(BaseModel):
     provider_id: Optional[UUID] = None
     gateway_id: Optional[UUID] = None
+    gateway_group_id: Optional[UUID] = None
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
@@ -284,6 +284,7 @@ class DIDImport(BaseModel):
     numbers: List[str]
     provider_id: Optional[UUID] = None
     gateway_id: Optional[UUID] = None
+    gateway_group_id: Optional[UUID] = None
     city: Optional[str] = None
     state: Optional[str] = None
 

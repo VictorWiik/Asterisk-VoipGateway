@@ -1,111 +1,65 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useState } from 'react'
-
-import Sidebar from './components/Sidebar'
+import { useAuth } from './contexts/AuthContext'
+import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
-import Customers from './pages/Customers'
-import DIDs from './pages/DIDs'
+import CustomersTrunk from './pages/CustomersTrunk'
+import CustomersPabx from './pages/CustomersPabx'
 import Providers from './pages/Providers'
+import GatewayGroups from './pages/GatewayGroups'
 import Gateways from './pages/Gateways'
+import DIDs from './pages/DIDs'
 import Routes_ from './pages/Routes'
 import Extensions from './pages/Extensions'
 import Tariffs from './pages/Tariffs'
 import Reports from './pages/Reports'
-import Settings from './pages/Settings'
 import Conference from './pages/Conference'
 import Integrations from './pages/Integrations'
-import Plans from './pages/Plans'
+import Settings from './pages/Settings'
+import RoutePlans from './pages/RoutePlans'
+import TariffPlans from './pages/TariffPlans'
 
 function PrivateRoute({ children }) {
-  const token = localStorage.getItem('token')
-  return token ? children : <Navigate to="/login" />
-}
-
-function AppLayout({ children }) {
-  return (
-    <div className="flex min-h-screen bg-dark-500">
-      <Sidebar />
-      <main className="flex-1 ml-64 p-8">
-        {children}
-      </main>
-    </div>
-  )
+  const { isAuthenticated, loading } = useAuth()
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-dark-500 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" />
+      </div>
+    )
+  }
+  
+  return isAuthenticated ? children : <Navigate to="/login" />
 }
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'))
-
   return (
     <Routes>
-      <Route path="/login" element={
-        isAuthenticated ? <Navigate to="/" /> : <Login onLogin={() => setIsAuthenticated(true)} />
-      } />
+      <Route path="/login" element={<Login />} />
       <Route path="/" element={
         <PrivateRoute>
-          <AppLayout><Dashboard /></AppLayout>
+          <Layout />
         </PrivateRoute>
-      } />
-      <Route path="/customers" element={
-        <PrivateRoute>
-          <AppLayout><Customers /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/plans" element={
-        <PrivateRoute>
-          <AppLayout><Plans /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/dids" element={
-        <PrivateRoute>
-          <AppLayout><DIDs /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/providers" element={
-        <PrivateRoute>
-          <AppLayout><Providers /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/gateways" element={
-        <PrivateRoute>
-          <AppLayout><Gateways /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/routes" element={
-        <PrivateRoute>
-          <AppLayout><Routes_ /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/extensions" element={
-        <PrivateRoute>
-          <AppLayout><Extensions /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/tariffs" element={
-        <PrivateRoute>
-          <AppLayout><Tariffs /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/reports" element={
-        <PrivateRoute>
-          <AppLayout><Reports /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/conference" element={
-        <PrivateRoute>
-          <AppLayout><Conference /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/integrations" element={
-        <PrivateRoute>
-          <AppLayout><Integrations /></AppLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/settings" element={
-        <PrivateRoute>
-          <AppLayout><Settings /></AppLayout>
-        </PrivateRoute>
-      } />
+      }>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="customers/trunk" element={<CustomersTrunk />} />
+        <Route path="customers/pabx" element={<CustomersPabx />} />
+        <Route path="providers" element={<Providers />} />
+        <Route path="gateway-groups" element={<GatewayGroups />} />
+        <Route path="gateways" element={<Gateways />} />
+        <Route path="dids" element={<DIDs />} />
+        <Route path="routes" element={<Routes_ />} />
+        <Route path="extensions" element={<Extensions />} />
+        <Route path="tariffs" element={<Tariffs />} />
+        <Route path="route-plans" element={<RoutePlans />} />
+        <Route path="tariff-plans" element={<TariffPlans />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="conference" element={<Conference />} />
+        <Route path="integrations" element={<Integrations />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
     </Routes>
   )
 }
