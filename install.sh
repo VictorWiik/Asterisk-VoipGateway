@@ -2,7 +2,7 @@
 # ============================================
 # TrunkFlow - Script de Instalação
 # Sistema de Gerenciamento VoIP
-# Versão: 2.0
+# Versão: 2.1
 # ============================================
 
 set -e
@@ -35,10 +35,10 @@ SECRET_KEY=$(openssl rand -hex 32)
 ADMIN_PASS="admin123"
 SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
-echo -e "${YELLOW}[1/10] Atualizando sistema...${NC}"
+echo -e "${YELLOW}[1/11] Atualizando sistema...${NC}"
 apt update && apt upgrade -y
 
-echo -e "${YELLOW}[2/10] Instalando dependências...${NC}"
+echo -e "${YELLOW}[2/11] Instalando dependências...${NC}"
 apt install -y \
     python3 python3-pip python3-venv \
     postgresql postgresql-contrib \
@@ -49,7 +49,7 @@ apt install -y \
     sngrep \
     tcpdump
 
-echo -e "${YELLOW}[3/10] Configurando PostgreSQL...${NC}"
+echo -e "${YELLOW}[3/11] Configurando PostgreSQL...${NC}"
 systemctl enable postgresql
 systemctl start postgresql
 sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';" 2>/dev/null || true
@@ -57,12 +57,12 @@ sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;" 2>/dev/null 
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 sudo -u postgres psql -d $DB_NAME -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 
-echo -e "${YELLOW}[4/10] Clonando repositório...${NC}"
+echo -e "${YELLOW}[4/11] Clonando repositório...${NC}"
 rm -rf $INSTALL_DIR
 git clone https://github.com/VictorWiik/Asterisk-VoipGateway.git $INSTALL_DIR
 cd $INSTALL_DIR
 
-echo -e "${YELLOW}[5/10] Configurando Backend...${NC}"
+echo -e "${YELLOW}[5/11] Configurando Backend...${NC}"
 cd $INSTALL_DIR/backend
 python3 -m venv venv
 source venv/bin/activate
@@ -76,7 +76,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ENVEOF
 
-echo -e "${YELLOW}[6/10] Executando migrations...${NC}"
+echo -e "${YELLOW}[6/11] Executando migrations...${NC}"
 cd $INSTALL_DIR/database
 for migration in migration_*.sql; do
     if [ -f "$migration" ]; then
@@ -93,12 +93,12 @@ VALUES (uuid_generate_v4(), 'admin', 'admin@trunkflow.local', '$ADMIN_HASH', 'Ad
 ON CONFLICT (username) DO NOTHING;
 "
 
-echo -e "${YELLOW}[7/10] Configurando Frontend...${NC}"
+echo -e "${YELLOW}[7/11] Configurando Frontend...${NC}"
 cd $INSTALL_DIR/frontend
 npm install
 npm run build
 
-echo -e "${YELLOW}[8/10] Configurando Asterisk...${NC}"
+echo -e "${YELLOW}[8/11] Configurando Asterisk...${NC}"
 # Configurar PJSIP com NAT
 cat > /etc/asterisk/pjsip.conf << PJSIPEOF
 [global]
@@ -135,10 +135,23 @@ rtpstart=10000
 rtpend=20000
 RTPEOF
 
+# Configurar CDR PostgreSQL
+cat > /etc/asterisk/cdr_pgsql.conf << CDREOF
+[global]
+hostname=127.0.0.1
+port=5432
+dbname=$DB_NAME
+user=$DB_USER
+password=$DB_PASS
+table=cdr
+encoding=UTF8
+timezone=UTC
+CDREOF
+
 # Permissões
 chown -R asterisk:asterisk /etc/asterisk/
 
-echo -e "${YELLOW}[9/10] Configurando serviços systemd...${NC}"
+echo -e "${YELLOW}[9/11] Configurando serviços systemd...${NC}"
 cat > /etc/systemd/system/asterisk-admin.service << SERVICEEOF
 [Unit]
 Description=TrunkFlow Backend API
@@ -195,7 +208,7 @@ NGINXEOF
 ln -sf /etc/nginx/sites-available/asterisk-admin /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
-echo -e "${YELLOW}[10/10] Iniciando serviços...${NC}"
+echo -e "${YELLOW}[10/11] Iniciando serviços...${NC}"
 systemctl daemon-reload
 systemctl enable asterisk-admin
 systemctl enable asterisk
@@ -204,6 +217,12 @@ systemctl start postgresql
 systemctl start asterisk
 systemctl start asterisk-admin
 systemctl restart nginx
+
+# Carregar módulo CDR PostgreSQL
+sleep 2
+asterisk -rx "module load cdr_pgsql.so" 2>/dev/null || true
+
+echo -e "${YELLOW}[11/11] Finalizando...${NC}"
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"

@@ -10,7 +10,8 @@ import {
   Download,
   Search,
   Calendar,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react'
 import api from '../services/api'
 
@@ -24,7 +25,7 @@ export default function Reports() {
     search: ''
   })
 
-  const { data: cdrData, isLoading: loadingCDR } = useQuery({
+  const { data: cdrData, isLoading: loadingCDR, refetch: refetchCDR } = useQuery({
     queryKey: ['cdr-report', filters],
     queryFn: () => api.get('/reports/cdr', { params: filters }).then(res => res.data),
     enabled: activeTab === 'cdr'
@@ -41,8 +42,22 @@ export default function Reports() {
     queryFn: () => api.get('/customers/').then(res => res.data),
   })
 
-  const exportCSV = () => {
-    window.open(`/api/v1/reports/cdr/export?start_date=${filters.start_date}&end_date=${filters.end_date}`, '_blank')
+  const exportCSV = async () => {
+    try {
+      const response = await api.get('/reports/cdr/export', {
+        params: { start_date: filters.start_date, end_date: filters.end_date },
+        responseType: 'blob'
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `cdr_${filters.start_date}_${filters.end_date}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      console.error('Erro ao exportar:', error)
+    }
   }
 
   const formatDuration = (seconds) => {
@@ -61,13 +76,13 @@ export default function Reports() {
 
   const callTypeLabels = {
     inbound: { label: 'Entrada', icon: PhoneIncoming, class: 'text-emerald-400' },
-    outbound: { label: 'Saida', icon: PhoneOutgoing, class: 'text-primary-400' },
+    outbound: { label: 'Saída', icon: PhoneOutgoing, class: 'text-primary-400' },
     internal: { label: 'Interno', icon: Phone, class: 'text-amber-400' },
   }
 
   const dispositionLabels = {
     ANSWERED: { label: 'Atendida', class: 'badge-success' },
-    NO_ANSWER: { label: 'Nao Atendida', class: 'badge-warning' },
+    'NO ANSWER': { label: 'Não Atendida', class: 'badge-warning' },
     BUSY: { label: 'Ocupado', class: 'badge-warning' },
     FAILED: { label: 'Falha', class: 'badge-danger' },
     CONGESTION: { label: 'Congestionado', class: 'badge-danger' },
@@ -77,8 +92,8 @@ export default function Reports() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Relatorios</h1>
-          <p className="text-gray-400 mt-1">Analise de chamadas e DIDs</p>
+          <h1 className="text-2xl font-bold text-white">Relatórios</h1>
+          <p className="text-gray-400 mt-1">Análise de chamadas e DIDs</p>
         </div>
       </div>
 
@@ -115,7 +130,7 @@ export default function Reports() {
           <div className="card">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
-                <label className="label">Data Inicio</label>
+                <label className="label">Data Início</label>
                 <input
                   type="date"
                   value={filters.start_date}
@@ -154,7 +169,7 @@ export default function Reports() {
                 >
                   <option value="">Todos</option>
                   <option value="inbound">Entrada</option>
-                  <option value="outbound">Saida</option>
+                  <option value="outbound">Saída</option>
                   <option value="internal">Interno</option>
                 </select>
               </div>
@@ -188,7 +203,7 @@ export default function Reports() {
                   <Clock className="w-8 h-8 text-emerald-400" />
                   <div>
                     <p className="text-2xl font-bold text-white">{formatDuration(cdrData.summary.total_duration || 0)}</p>
-                    <p className="text-sm text-gray-400">Duracao Total</p>
+                    <p className="text-sm text-gray-400">Duração Total</p>
                   </div>
                 </div>
               </div>
@@ -213,8 +228,12 @@ export default function Reports() {
             </div>
           )}
 
-          {/* Export button */}
-          <div className="flex justify-end">
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2">
+            <button onClick={() => refetchCDR()} className="btn-primary flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Atualizar
+            </button>
             <button onClick={exportCSV} className="btn-secondary flex items-center gap-2">
               <Download className="w-4 h-4" />
               Exportar CSV
@@ -235,10 +254,10 @@ export default function Reports() {
                     <th>Tipo</th>
                     <th>Origem</th>
                     <th>Destino</th>
-                    <th>Duracao</th>
+                    <th>Duração</th>
                     <th>Status</th>
                     <th>Custo</th>
-                    <th>Preco</th>
+                    <th>Preço</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -296,7 +315,7 @@ export default function Reports() {
                 </div>
                 <div className="card py-4">
                   <p className="text-2xl font-bold text-emerald-400">{didReport?.available || 0}</p>
-                  <p className="text-sm text-gray-400">Disponiveis</p>
+                  <p className="text-sm text-gray-400">Disponíveis</p>
                 </div>
                 <div className="card py-4">
                   <p className="text-2xl font-bold text-primary-400">{didReport?.allocated || 0}</p>
@@ -318,7 +337,7 @@ export default function Reports() {
                         <span className="text-white">{item.provider || 'Sem provedor'}</span>
                         <div className="flex items-center gap-4">
                           <span className="text-gray-400">{item.count} DIDs</span>
-                          <span className="text-amber-400">R$ {Number(item.cost || 0).toFixed(2)}/mes</span>
+                          <span className="text-amber-400">R$ {Number(item.cost || 0).toFixed(2)}/mês</span>
                         </div>
                       </div>
                     ))}

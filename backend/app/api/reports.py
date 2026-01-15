@@ -16,59 +16,65 @@ router = APIRouter()
 
 @router.get("/cdr")
 async def get_cdr_report(
-    start_date: str = Query(None),
-    end_date: str = Query(None),
-    customer_id: UUID = Query(None),
-    call_type: str = Query(None),
-    search: str = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    customer_id: Optional[str] = Query(None),
+    call_type: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = select(CDR)
-    
+
     if start_date:
-        query = query.where(CDR.start_time >= datetime.fromisoformat(start_date))
+        query = query.where(CDR.calldate >= datetime.fromisoformat(start_date))
     if end_date:
         end = datetime.fromisoformat(end_date) + timedelta(days=1)
-        query = query.where(CDR.start_time < end)
-    if customer_id:
-        query = query.where(CDR.customer_id == customer_id)
-    if call_type:
+        query = query.where(CDR.calldate < end)
+    if customer_id and customer_id.strip():
+        try:
+            query = query.where(CDR.customer_id == UUID(customer_id))
+        except:
+            pass
+    if call_type and call_type.strip():
         query = query.where(CDR.call_type == call_type)
-    if search:
+    if search and search.strip():
         query = query.where(
             (CDR.src.ilike(f"%{search}%")) | (CDR.dst.ilike(f"%{search}%"))
         )
-    
+
     # Get records
     result = await db.execute(
-        query.order_by(CDR.start_time.desc()).offset(skip).limit(limit)
+        query.order_by(CDR.calldate.desc()).offset(skip).limit(limit)
     )
     records = result.scalars().all()
-    
-    # Get summary
+
+    # Get summary - build query with same filters
     summary_query = select(
         func.count(CDR.id).label('total_calls'),
         func.sum(CDR.billsec).label('total_duration'),
         func.sum(CDR.cost).label('total_cost'),
         func.sum(CDR.price).label('total_price')
     )
-    
+
     if start_date:
-        summary_query = summary_query.where(CDR.start_time >= datetime.fromisoformat(start_date))
+        summary_query = summary_query.where(CDR.calldate >= datetime.fromisoformat(start_date))
     if end_date:
         end = datetime.fromisoformat(end_date) + timedelta(days=1)
-        summary_query = summary_query.where(CDR.start_time < end)
-    if customer_id:
-        summary_query = summary_query.where(CDR.customer_id == customer_id)
-    if call_type:
+        summary_query = summary_query.where(CDR.calldate < end)
+    if customer_id and customer_id.strip():
+        try:
+            summary_query = summary_query.where(CDR.customer_id == UUID(customer_id))
+        except:
+            pass
+    if call_type and call_type.strip():
         summary_query = summary_query.where(CDR.call_type == call_type)
-    
+
     summary_result = await db.execute(summary_query)
     summary_row = summary_result.one()
-    
+
     return {
         "records": [
             {
@@ -76,9 +82,9 @@ async def get_cdr_report(
                 "call_id": r.call_id,
                 "src": r.src,
                 "dst": r.dst,
-                "callerid": r.callerid,
-                "call_type": r.call_type,
-                "start_time": r.start_time.isoformat() if r.start_time else None,
+                "callerid": r.callerid or r.clid,
+                "call_type": r.call_type or "outbound",
+                "start_time": r.calldate.isoformat() if r.calldate else None,
                 "duration": r.duration,
                 "billsec": r.billsec,
                 "disposition": r.disposition,
@@ -98,40 +104,40 @@ async def get_cdr_report(
 
 @router.get("/cdr/export")
 async def export_cdr(
-    start_date: str = Query(None),
-    end_date: str = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = select(CDR)
-    
+
     if start_date:
-        query = query.where(CDR.start_time >= datetime.fromisoformat(start_date))
+        query = query.where(CDR.calldate >= datetime.fromisoformat(start_date))
     if end_date:
         end = datetime.fromisoformat(end_date) + timedelta(days=1)
-        query = query.where(CDR.start_time < end)
-    
-    result = await db.execute(query.order_by(CDR.start_time.desc()))
+        query = query.where(CDR.calldate < end)
+
+    result = await db.execute(query.order_by(CDR.calldate.desc()))
     records = result.scalars().all()
-    
+
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(['Data/Hora', 'Origem', 'Destino', 'CallerID', 'Tipo', 'Duracao', 'Billsec', 'Status', 'Custo', 'Preco'])
-    
+
     for r in records:
         writer.writerow([
-            r.start_time.isoformat() if r.start_time else '',
+            r.calldate.isoformat() if r.calldate else '',
             r.src,
             r.dst,
-            r.callerid,
-            r.call_type,
+            r.callerid or r.clid,
+            r.call_type or 'outbound',
             r.duration,
             r.billsec,
             r.disposition,
             float(r.cost or 0),
             float(r.price or 0)
         ])
-    
+
     output.seek(0)
     return StreamingResponse(
         iter([output.getvalue()]),
@@ -151,11 +157,11 @@ async def get_did_report(
         .group_by(DID.status)
     )
     by_status = [{"status": r.status, "count": r.count} for r in status_result.all()]
-    
+
     total = sum(s["count"] for s in by_status)
     available = next((s["count"] for s in by_status if s["status"] == "available"), 0)
     allocated = next((s["count"] for s in by_status if s["status"] == "allocated"), 0)
-    
+
     # By provider
     provider_result = await db.execute(
         select(
@@ -170,11 +176,11 @@ async def get_did_report(
         {"provider": r.provider, "count": r.count, "cost": float(r.cost or 0)}
         for r in provider_result.all()
     ]
-    
+
     # Total monthly cost
     cost_result = await db.execute(select(func.sum(DID.monthly_cost)))
     monthly_cost = cost_result.scalar() or 0
-    
+
     return {
         "total": total,
         "available": available,
