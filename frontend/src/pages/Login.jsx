@@ -105,7 +105,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-gray-600 text-sm mt-6">
-          TrunkFlow v1.0.0
+          TrunkFlow v2.2
         </p>
       </div>
     </div>
