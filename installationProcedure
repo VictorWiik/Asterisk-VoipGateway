@@ -1,0 +1,7 @@
+# No novo servidor Debian (como root)
+# At the new Debian server (as root)
+apt update && apt install -y git curl
+git clone https://github.com/VictorWiik/Asterisk-VoipGateway.git /opt/asterisk-admin
+cd /opt/asterisk-admin
+chmod +x install.sh
+./install.sh
