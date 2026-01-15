@@ -1,148 +1,168 @@
-# 🚀 TrunkFlow - VoIP Gateway Management
+# Asterisk Admin
 
-<p align="center">
-  <img src="docs/images/logo.png" alt="TrunkFlow Logo" width="300">
-</p>
+Sistema de gerenciamento de operadora VoIP com interface web moderna.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
-  <img src="https://img.shields.io/badge/license-Proprietary-red.svg" alt="License">
-  <img src="https://img.shields.io/badge/asterisk-20-orange.svg" alt="Asterisk">
-  <img src="https://img.shields.io/badge/python-3.11+-green.svg" alt="Python">
-  <img src="https://img.shields.io/badge/react-18+-61DAFB.svg" alt="React">
-</p>
+## 🚀 Funcionalidades
 
-<p align="center">
-  <strong>Sistema completo de gerenciamento VoIP para centrais Asterisk</strong>
-</p>
+- **Dashboard** - Visão geral do sistema com gráficos e estatísticas
+- **Provedores** - Gerenciamento de provedores SIP (Fixo, Móvel, LDI)
+- **Gateways** - Configuração de troncos SIP
+- **DIDs** - Inventário de números com alocação para clientes
+- **Clientes** - Cadastro e gestão de clientes
+- **Ramais** - Criação de ramais com autenticação IP ou senha
+- **Rotas** - Configuração de rotas de saída
+- **Relatórios** - CDR e consumo por cliente/rota
 
----
+## 🛠 Tecnologias
 
-## ✨ Funcionalidades
+### Backend
+- Python 3.11+
+- FastAPI
+- PostgreSQL
+- SQLAlchemy (async)
+- Pydantic
 
-- 📊 **Dashboard** - Métricas em tempo real
-- 👥 **Clientes** - Gerenciamento de clientes Trunk e Ramal
-- 📞 **DIDs** - Inventário com alocação automática
-- 🏢 **Provedores** - Cadastro de operadoras (Fixo, Móvel, LDI)
-- 🔌 **Gateways** - Configuração SIP completa
-- 🛤️ **Rotas** - Roteamento de saída com prioridade
-- 📱 **Ramais** - Extensões para clientes
-- 💰 **Tarifas** - Precificação com margem
-- 📈 **Relatórios** - CDR e análises
-- 🔄 **Sync Automático** - Integração direta com Asterisk
+### Frontend
+- React 18
+- Vite
+- Tailwind CSS
+- React Query
+- Recharts
 
-## 🏗️ Arquitetura
+## 📦 Instalação
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Browser   │────▶│    Nginx    │────▶│  React SPA  │
-└─────────────┘     └──────┬──────┘     └─────────────┘
-                          │
-                          ▼
-                   ┌─────────────┐
-                   │   FastAPI   │
-                   │   Backend   │
-                   └──────┬──────┘
-                          │
-        ┌─────────────────┼─────────────────┐
-        │                 │                 │
-        ▼                 ▼                 ▼
-┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-│ PostgreSQL  │   │  Asterisk   │   │Config Files │
-└─────────────┘   └─────────────┘   └─────────────┘
-```
+### Pré-requisitos
+- Debian 12 ou Ubuntu 22.04+
+- PostgreSQL 14+
+- Node.js 18+
+- Python 3.11+
 
-## 🛠️ Stack Tecnológico
-
-| Camada | Tecnologias |
-|--------|-------------|
-| **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0, PostgreSQL |
-| **Frontend** | React 18, Vite, TailwindCSS, React Query |
-| **Infra** | Debian 12, Nginx, Asterisk 20, Systemd |
-
-## 📋 Requisitos
-
-| Recurso | Mínimo | Recomendado |
-|---------|--------|-------------|
-| CPU | 2 vCPUs | 4+ vCPUs |
-| RAM | 2 GB | 4+ GB |
-| Disco | 20 GB SSD | 50+ GB SSD |
-| SO | Debian 12 / Ubuntu 22.04 | Debian 12 |
-
-## 🚀 Instalação Rápida
+### Instalação rápida
 
 ```bash
 # Clone o repositório
-git clone https://github.com/VictorWiik/Asterisk-VoipGateway.git
-cd Asterisk-VoipGateway
+git clone https://github.com/seu-usuario/asterisk-admin.git
+cd asterisk-admin
 
-# Execute o instalador
-chmod +x install.sh
-sudo ./install.sh
+# Execute o script de instalação
+chmod +x scripts/install.sh
+sudo ./scripts/install.sh
 ```
 
-O script oferece instalação completa (PostgreSQL, Nginx, Asterisk) ou apenas a aplicação.
+### Instalação manual
 
-## 📁 Estrutura do Projeto
-
-```
-trunkflow/
-├── backend/           # API FastAPI
-├── frontend/          # React SPA
-├── database/          # Schema e migrações
-├── docs/              # Documentação
-├── install.sh         # Instalador automático
-└── README.md
-```
-
-## 📡 Integração Asterisk
-
-O sistema gera automaticamente:
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `pjsip_gateways.conf` | Endpoints SIP dos gateways |
-| `pjsip_customer_trunks.conf` | Trunks de clientes |
-| `pjsip_extensions.conf` | Ramais |
-| `extensions_routes.conf` | Dialplan de saída |
-| `extensions_dids.conf` | Dialplan de entrada |
-
-## 🔧 Comandos Úteis
-
+#### 1. Banco de dados
 ```bash
-# Status dos serviços
-systemctl status trunkflow
-systemctl status asterisk
+sudo -u postgres psql
+CREATE USER asterisk WITH PASSWORD 'asterisk';
+CREATE DATABASE asterisk_admin OWNER asterisk;
+\q
 
-# Logs
-journalctl -u trunkflow -f
-
-# Asterisk CLI
-asterisk -rx "pjsip show endpoints"
+# Aplica schema
+psql -U asterisk -d asterisk_admin -f database/schema.sql
 ```
 
-## 📊 Capacidade Estimada
+#### 2. Backend
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-| Servidor | Canais | CPS |
-|----------|--------|-----|
-| 2 vCPU / 2GB | 60-80 | 10-15 |
-| 4 vCPU / 8GB | 150-180 | 25-30 |
-| 8 vCPU / 16GB | 300-400 | 50-60 |
+# Configura variáveis
+cp .env.example .env
+nano .env
 
-*Codec G711 (alaw/ulaw) sem gravação*
+# Inicia
+uvicorn app.main:app --reload
+```
 
-## 📄 Documentação
+#### 3. Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-- [Guia de Instalação](docs/AsteriskAdmin_Guia_Instalacao.pdf)
-- [Documentação Técnica](docs/AsteriskAdmin_Documentacao_Tecnica.pdf)
+## 🔐 Acesso padrão
 
-## 📜 Licença
+- **URL**: http://localhost:3000
+- **Usuário**: admin
+- **Senha**: admin123
 
-Este projeto é proprietário. Veja [LICENSE](LICENSE) para detalhes.
+⚠️ **Troque a senha em produção!**
 
----
+## 📁 Estrutura do projeto
 
-<p align="center">
-  <strong>TrunkFlow</strong> - VoIP Management<br>
-  Feito com ❤️ para profissionais de telecomunicações
-</p>
+```
+asterisk-admin/
+├── backend/
+│   ├── app/
+│   │   ├── api/          # Endpoints da API
+│   │   ├── core/         # Configurações e segurança
+│   │   ├── models/       # Modelos SQLAlchemy
+│   │   ├── schemas/      # Schemas Pydantic
+│   │   └── services/     # Serviços (Asterisk, etc)
+│   ├── requirements.txt
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── components/   # Componentes React
+│   │   ├── pages/        # Páginas
+│   │   ├── services/     # Serviços de API
+│   │   └── styles/       # CSS
+│   └── package.json
+├── database/
+│   └── schema.sql        # Schema do banco
+└── scripts/
+    └── install.sh        # Script de instalação
+```
+
+## 🔧 Configuração
+
+### Variáveis de ambiente (.env)
+
+```env
+# Database
+DATABASE_URL=postgresql+asyncpg://asterisk:asterisk@localhost:5432/asterisk_admin
+
+# Security
+SECRET_KEY=sua-chave-secreta-aqui
+
+# Asterisk
+AMI_HOST=127.0.0.1
+AMI_PORT=5038
+AMI_USERNAME=admin
+AMI_SECRET=admin
+
+ASTERISK_CONFIG_PATH=/etc/asterisk
+ASTERISK_SPOOL_PATH=/var/spool/asterisk/outgoing
+```
+
+## 📡 API
+
+A documentação da API está disponível em:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### Endpoints principais
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | /api/v1/auth/login | Autenticação |
+| GET | /api/v1/dashboard/stats | Estatísticas |
+| GET | /api/v1/providers | Lista provedores |
+| GET | /api/v1/customers | Lista clientes |
+| GET | /api/v1/dids | Lista DIDs |
+
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.

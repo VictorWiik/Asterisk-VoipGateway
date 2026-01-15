@@ -1,29 +1,22 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { 
-  Activity, 
-  Phone, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle,
+import {
+  Activity,
+  Phone,
+  AlertTriangle,
+  CheckCircle,
   Play,
   Square,
   RefreshCw,
   ArrowRight,
   ArrowLeft,
   Clock,
-  Server,
-  Wifi,
   WifiOff,
-  ChevronDown,
-  ChevronRight,
-  Eye,
-  Download,
+  Wifi,
   Trash2
 } from 'lucide-react'
 import api from '../services/api'
 
-// Componente de Status Badge
 function StatusBadge({ status }) {
   const styles = {
     trying: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -32,7 +25,7 @@ function StatusBadge({ status }) {
     ended: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
     failed: 'bg-red-500/20 text-red-400 border-red-500/30',
   }
-  
+
   const labels = {
     trying: 'Tentando',
     ringing: 'Tocando',
@@ -40,7 +33,7 @@ function StatusBadge({ status }) {
     ended: 'Finalizada',
     failed: 'Falhou',
   }
-  
+
   return (
     <span className={`px-2 py-1 rounded-full text-xs border ${styles[status] || styles.trying}`}>
       {labels[status] || status}
@@ -48,129 +41,46 @@ function StatusBadge({ status }) {
   )
 }
 
-// Componente de Mensagem SIP
-function SIPMessage({ message, isResponse }) {
-  const [expanded, setExpanded] = useState(false)
-  
-  const getMethodColor = (method) => {
-    const colors = {
-      INVITE: 'text-green-400',
-      ACK: 'text-blue-400',
-      BYE: 'text-red-400',
-      CANCEL: 'text-orange-400',
-      RESPONSE: 'text-purple-400',
-    }
-    return colors[method] || 'text-gray-400'
-  }
-  
-  return (
-    <div className="border border-dark-100 rounded-lg p-3 hover:bg-dark-300/50 transition-colors">
-      <div 
-        className="flex items-center justify-between cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-3">
-          {isResponse ? (
-            <ArrowLeft className="w-4 h-4 text-purple-400" />
-          ) : (
-            <ArrowRight className="w-4 h-4 text-green-400" />
-          )}
-          <span className={`font-mono font-bold ${getMethodColor(message.method)}`}>
-            {message.status_code ? `${message.status_code} ${message.status_text}` : message.method}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
-          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </div>
-      </div>
-      
-      {expanded && (
-        <div className="mt-3 p-3 bg-dark-500 rounded-lg font-mono text-xs overflow-x-auto">
-          <pre className="text-gray-300 whitespace-pre-wrap">
-            {message.raw_message || `From: ${message.from_uri}\nTo: ${message.to_uri}\nCall-ID: ${message.call_id}`}
-          </pre>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Componente de Call Flow
-function CallFlow({ call }) {
-  if (!call) return null
-  
-  return (
-    <div className="space-y-2">
-      {call.messages?.map((msg, idx) => (
-        <SIPMessage 
-          key={idx} 
-          message={msg} 
-          isResponse={msg.status_code !== null}
-        />
-      ))}
-    </div>
-  )
-}
-
-// Componente Principal
 export default function Debug() {
   const [capturing, setCapturing] = useState(false)
   const [selectedCall, setSelectedCall] = useState(null)
-  const [messages, setMessages] = useState([])
-  const [activeCalls, setActiveCalls] = useState([])
-  const wsRef = useRef(null)
-  
+
   // Query para status da captura
   const { data: captureStatus, refetch: refetchStatus } = useQuery({
     queryKey: ['capture-status'],
     queryFn: () => api.get('/debug/capture/status').then(res => res.data),
-    refetchInterval: 5000,
+    refetchInterval: capturing ? 2000 : 5000,
   })
-  
+
+  // Query para mensagens SIP (polling)
+  const { data: messages, refetch: refetchMessages } = useQuery({
+    queryKey: ['sip-messages'],
+    queryFn: () => api.get('/debug/messages?limit=50').then(res => res.data),
+    refetchInterval: capturing ? 1000 : false,
+    enabled: capturing,
+  })
+
   // Query para problemas detectados
-  const { data: problems } = useQuery({
+  const { data: problems, refetch: refetchProblems } = useQuery({
     queryKey: ['debug-problems'],
     queryFn: () => api.get('/debug/problems').then(res => res.data),
-    refetchInterval: 10000,
+    refetchInterval: capturing ? 3000 : 10000,
   })
-  
+
   // Query para histórico de chamadas
   const { data: callHistory, refetch: refetchHistory } = useQuery({
     queryKey: ['call-history'],
     queryFn: () => api.get('/debug/call-history?limit=20').then(res => res.data),
+    refetchInterval: capturing ? 2000 : false,
   })
-  
-  // WebSocket para tempo real
+
+  // Atualizar estado de captura baseado no status
   useEffect(() => {
-    if (capturing) {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/api/v1/debug/ws/sip-monitor`
-      
-      wsRef.current = new WebSocket(wsUrl)
-      
-      wsRef.current.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-        
-        if (data.type === 'sip_message') {
-          setMessages(prev => [...prev.slice(-100), data.data])
-        } else if (data.type === 'active_calls') {
-          setActiveCalls(data.data)
-        }
-      }
-      
-      wsRef.current.onclose = () => {
-        setCapturing(false)
-      }
-      
-      return () => {
-        if (wsRef.current) {
-          wsRef.current.close()
-        }
-      }
+    if (captureStatus?.capturing !== undefined) {
+      setCapturing(captureStatus.capturing)
     }
-  }, [capturing])
-  
+  }, [captureStatus?.capturing])
+
   // Iniciar captura
   const startCapture = async () => {
     try {
@@ -181,26 +91,45 @@ export default function Debug() {
       console.error('Erro ao iniciar captura:', err)
     }
   }
-  
+
   // Parar captura
   const stopCapture = async () => {
     try {
       await api.post('/debug/capture/stop')
       setCapturing(false)
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
       refetchStatus()
     } catch (err) {
       console.error('Erro ao parar captura:', err)
     }
   }
-  
-  // Limpar mensagens
-  const clearMessages = () => {
-    setMessages([])
+
+  // Limpar histórico
+  const clearHistory = async () => {
+    try {
+      await api.post('/debug/clear')
+      refetchMessages()
+      refetchHistory()
+      refetchProblems()
+    } catch (err) {
+      console.error('Erro ao limpar:', err)
+    }
   }
-  
+
+  const getMethodColor = (method) => {
+    if (method.includes('INVITE')) return 'text-green-400'
+    if (method.includes('200')) return 'text-green-400'
+    if (method.includes('180') || method.includes('183')) return 'text-blue-400'
+    if (method.includes('100')) return 'text-yellow-400'
+    if (method.includes('ACK')) return 'text-cyan-400'
+    if (method.includes('BYE')) return 'text-red-400'
+    if (method.includes('4') || method.includes('5')) return 'text-red-400'
+    return 'text-gray-400'
+  }
+
+  const isResponse = (method) => {
+    return method.match(/^\d/)
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -210,8 +139,8 @@ export default function Debug() {
           <p className="text-gray-400 mt-1">Monitor SIP em tempo real e análise de problemas</p>
         </div>
         <div className="flex items-center gap-3">
-          {captureStatus?.capturing ? (
-            <button 
+          {capturing ? (
+            <button
               onClick={stopCapture}
               className="btn-danger flex items-center gap-2"
             >
@@ -219,7 +148,7 @@ export default function Debug() {
               Parar Captura
             </button>
           ) : (
-            <button 
+            <button
               onClick={startCapture}
               className="btn-primary flex items-center gap-2"
             >
@@ -229,15 +158,15 @@ export default function Debug() {
           )}
         </div>
       </div>
-      
+
       {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              captureStatus?.capturing ? 'bg-green-500/20' : 'bg-gray-500/20'
+              capturing ? 'bg-green-500/20' : 'bg-gray-500/20'
             }`}>
-              {captureStatus?.capturing ? (
+              {capturing ? (
                 <Wifi className="w-5 h-5 text-green-400 animate-pulse" />
               ) : (
                 <WifiOff className="w-5 h-5 text-gray-400" />
@@ -246,12 +175,12 @@ export default function Debug() {
             <div>
               <p className="text-sm text-gray-400">Status</p>
               <p className="text-lg font-bold text-white">
-                {captureStatus?.capturing ? 'Capturando' : 'Parado'}
+                {capturing ? 'Capturando' : 'Parado'}
               </p>
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
@@ -263,7 +192,7 @@ export default function Debug() {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
@@ -271,11 +200,11 @@ export default function Debug() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Mensagens</p>
-              <p className="text-lg font-bold text-white">{messages.length}</p>
+              <p className="text-lg font-bold text-white">{messages?.length || 0}</p>
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -294,7 +223,7 @@ export default function Debug() {
           </div>
         </div>
       </div>
-      
+
       {/* Problemas Detectados */}
       {problems?.length > 0 && (
         <div className="card border-red-500/30">
@@ -304,11 +233,11 @@ export default function Debug() {
           </h2>
           <div className="space-y-3">
             {problems.map((problem, idx) => (
-              <div 
+              <div
                 key={idx}
                 className={`p-3 rounded-lg border ${
-                  problem.type === 'error' 
-                    ? 'bg-red-500/10 border-red-500/30' 
+                  problem.type === 'error'
+                    ? 'bg-red-500/10 border-red-500/30'
                     : problem.type === 'warning'
                     ? 'bg-yellow-500/10 border-yellow-500/30'
                     : 'bg-blue-500/10 border-blue-500/30'
@@ -335,7 +264,7 @@ export default function Debug() {
           </div>
         </div>
       )}
-      
+
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Live Messages */}
@@ -344,20 +273,20 @@ export default function Debug() {
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary-400" />
               Mensagens SIP
-              {captureStatus?.capturing && (
+              {capturing && (
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               )}
             </h2>
             <div className="flex items-center gap-2">
-              <button 
-                onClick={clearMessages}
+              <button
+                onClick={clearHistory}
                 className="p-2 text-gray-400 hover:text-white hover:bg-dark-300 rounded-lg transition-colors"
                 title="Limpar"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
-              <button 
-                onClick={refetchHistory}
+              <button
+                onClick={() => refetchMessages()}
                 className="p-2 text-gray-400 hover:text-white hover:bg-dark-300 rounded-lg transition-colors"
                 title="Atualizar"
               >
@@ -365,38 +294,42 @@ export default function Debug() {
               </button>
             </div>
           </div>
-          
+
           <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {messages.length > 0 ? (
-              messages.slice(-20).reverse().map((msg, idx) => (
-                <div 
+            {messages?.length > 0 ? (
+              [...messages].reverse().map((msg, idx) => (
+                <div
                   key={idx}
-                  className="p-3 bg-dark-300/50 rounded-lg border border-dark-100 hover:border-primary-500/30 transition-colors cursor-pointer"
-                  onClick={() => setSelectedCall(msg.call_id)}
+                  className="p-3 bg-dark-300/50 rounded-lg border border-dark-100 hover:border-primary-500/30 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {msg.status_code ? (
+                      {isResponse(msg.method) ? (
                         <ArrowLeft className="w-4 h-4 text-purple-400" />
                       ) : (
                         <ArrowRight className="w-4 h-4 text-green-400" />
                       )}
-                      <span className="font-mono text-sm text-white">
-                        {msg.status_code ? `${msg.status_code} ${msg.status_text}` : msg.method}
+                      <span className={`font-mono text-sm font-bold ${getMethodColor(msg.method)}`}>
+                        {msg.method}
                       </span>
                     </div>
                     <span className="text-xs text-gray-500">
                       {new Date(msg.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                  <div className="mt-2 text-xs text-gray-400 font-mono truncate">
-                    {msg.from_uri} → {msg.to_uri}
+                  <div className="mt-2 text-xs text-gray-400 font-mono">
+                    {msg.source_ip} → {msg.dest_ip}
                   </div>
+                  {msg.call_id && (
+                    <div className="mt-1 text-xs text-gray-500 font-mono truncate">
+                      Call-ID: {msg.call_id.substring(0, 30)}...
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
               <div className="text-center py-12 text-gray-500">
-                {captureStatus?.capturing ? (
+                {capturing ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
                     <p>Aguardando mensagens SIP...</p>
@@ -411,22 +344,22 @@ export default function Debug() {
             )}
           </div>
         </div>
-        
+
         {/* Call History */}
         <div className="card">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary-400" />
             Histórico de Chamadas
           </h2>
-          
+
           <div className="space-y-2 max-h-[500px] overflow-y-auto">
             {callHistory?.length > 0 ? (
               callHistory.map((call, idx) => (
-                <div 
+                <div
                   key={idx}
                   className={`p-3 rounded-lg border transition-colors cursor-pointer ${
-                    selectedCall === call.call_id 
-                      ? 'bg-primary-500/10 border-primary-500/30' 
+                    selectedCall === call.call_id
+                      ? 'bg-primary-500/10 border-primary-500/30'
                       : 'bg-dark-300/50 border-dark-100 hover:border-primary-500/30'
                   }`}
                   onClick={() => setSelectedCall(selectedCall === call.call_id ? null : call.call_id)}
@@ -436,7 +369,7 @@ export default function Debug() {
                       <Phone className="w-4 h-4 text-primary-400" />
                       <div>
                         <p className="text-sm text-white font-mono">
-                          {call.from_uri?.split('@')[0]?.replace('<sip:', '')} → {call.to_uri?.split('@')[0]?.replace('<sip:', '')}
+                          {call.from_uri?.split('@')[0]?.replace('<sip:', '').replace('"', '') || 'N/A'} → {call.to_uri?.split('@')[0]?.replace('<sip:', '') || 'N/A'}
                         </p>
                         <p className="text-xs text-gray-500">
                           {new Date(call.start_time).toLocaleString()}
@@ -445,11 +378,27 @@ export default function Debug() {
                     </div>
                     <StatusBadge status={call.status} />
                   </div>
-                  
-                  {selectedCall === call.call_id && (
+
+                  {selectedCall === call.call_id && call.messages?.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-dark-100">
-                      <p className="text-xs text-gray-400 mb-2">Call-ID: {call.call_id}</p>
-                      <CallFlow call={call} />
+                      <p className="text-xs text-gray-400 mb-2">Fluxo da chamada:</p>
+                      <div className="space-y-1">
+                        {call.messages.map((msg, midx) => (
+                          <div key={midx} className="flex items-center gap-2 text-xs">
+                            {isResponse(msg.method) ? (
+                              <ArrowLeft className="w-3 h-3 text-purple-400" />
+                            ) : (
+                              <ArrowRight className="w-3 h-3 text-green-400" />
+                            )}
+                            <span className={`font-mono ${getMethodColor(msg.method)}`}>
+                              {msg.method}
+                            </span>
+                            <span className="text-gray-500">
+                              {new Date(msg.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

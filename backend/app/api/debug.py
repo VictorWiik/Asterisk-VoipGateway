@@ -114,3 +114,19 @@ async def capture_status(current_user = Depends(get_current_user)):
         "active_calls": len(sip_debug_service.active_calls),
         "message_count": len(sip_debug_service.message_history)
     }
+
+
+@router.get("/messages")
+async def get_messages(
+    limit: int = 50,
+    current_user = Depends(get_current_user)
+):
+    """Retorna últimas mensagens SIP capturadas"""
+    return sip_debug_service.get_messages(limit)
+
+
+@router.post("/clear")
+async def clear_history(current_user = Depends(get_current_user)):
+    """Limpa histórico de mensagens"""
+    sip_debug_service.clear()
+    return {"status": "cleared"}
