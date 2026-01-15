@@ -2,7 +2,7 @@
 # ============================================
 # TrunkFlow - Script de Instalação
 # Sistema de Gerenciamento VoIP
-# Versão: 2.1
+# Versão: 2.2
 # ============================================
 
 set -e
@@ -170,37 +170,37 @@ RestartSec=3
 WantedBy=multi-user.target
 SERVICEEOF
 
-cat > /etc/nginx/sites-available/asterisk-admin << NGINXEOF
+cat > /etc/nginx/sites-available/asterisk-admin << 'NGINXEOF'
 server {
     listen 80;
     server_name _;
-
-    root $INSTALL_DIR/frontend/dist;
+    root /opt/asterisk-admin/frontend/dist;
     index index.html;
 
     location / {
-        try_files \$uri \$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
     }
 
-    location /api/ {
+    location /api/v1/debug/ws/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_read_timeout 86400;
-    }
-
-    location /ws/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_read_timeout 86400;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300;
     }
 }
 NGINXEOF
